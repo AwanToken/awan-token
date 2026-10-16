@@ -1,0 +1,11 @@
+{
+  "network": "mainnet",
+  "minter": "EQA2T-nreKcnBzZmQfAJfEXCBdx8qPGVi8zGIUhFMtYi1vPs",
+  "wallets": {
+    "AWN-Owner": "UQA1G4lmw34UsL4P30mvW4k8WSCs1RHUkjXcp1DjE66L1ss9",
+    "AWN-Owner-jetton-wallet": "EQBQvDCDbXzvdiPplAVP4qqf7iZZX8fmZiucYTNJkZa9q2tm",
+    "AWN-simulated-dex-pool": "EQATJFmSr5Jd8cP62mHuvcnqqPjFqRyxT5dgpOGkO6hlTl2-",
+    "AWN-Treasury-Keeper": "UQCKBs_vJoZzhIrcz46G4KieMA1xRPTA7ALT0KOnz-PhRou6"
+  },
+  "status": "Deployed + 25% AWN seeded. Trading/sell/claim OFF. Next: Netlify Drop miniapp + real DEX LP (~50 TON) + EnableTrading."
+}

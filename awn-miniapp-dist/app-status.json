@@ -1,0 +1,14 @@
+{
+  "_comment": "Runtime Coming Soon / Live. Edit this file and redeploy only this asset to update all users (no code rebuild). Statuses: \"live\" | \"coming\". Owner edits drafts in admin Command Deck > Miniapp Coming Soon / Live, then pastes here.",
+  "global": "live",
+  "games": {
+    "siege": "live",
+    "run": "live"
+  },
+  "message": {
+    "it": "Stiamo aggiornando l'app. Torna a breve — in arrivo!",
+    "en": "We're updating the app. Back soon — coming soon!",
+    "ru": "Мы обновляем приложение. Скоро вернёмся — скоро!",
+    "zh": "应用升级中，稍后再来 — 即将上线！"
+  }
+}

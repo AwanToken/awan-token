@@ -1,0 +1,23 @@
+node_modules/
+build/
+dist/
+.DS_Store
+*.boc
+temp/
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Secrets — never commit (Owner seed, pool/buyer wallets)
+deployments/testnet-pool.json
+deployments/testnet-buyer.json
+deployments/mainnet-pool.json
+deployments/*-pool.json
+deployments/*-buyer.json
+deployments/archive/*-pool*.json
+deployments/archive/*-buyer*.json
+deployments/*.mnemonic.json
+deployments/**/*mnemonic*
+*.secret.json
+secrets/

@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-16T00:50:41.509Z",
+  "minter": "EQCewZeMbrfV_seCHvM8FcShFEHPLwPOMOdUXN4ZYRa13JMI",
+  "explorer": "https://testnet.tonviewer.com/EQCewZeMbrfV_seCHvM8FcShFEHPLwPOMOdUXN4ZYRa13JMI",
+  "results": {
+    "enableSell": "pass",
+    "sellOverLimit": "pass",
+    "sellOk": "pass",
+    "treasury": "0.17",
+    "claim": "pass-deferred-7d"
+  },
+  "poolLimitNano": "1250000000000000",
+  "possessionLimitNano": "3750000000000000",
+  "effectiveSellCapNano": "1250000000000000",
+  "remainingOwnerAwn": "749000000000000000"
+}

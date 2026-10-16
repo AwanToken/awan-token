@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-16T01:01:01.908Z",
+  "minter": "EQCewZeMbrfV_seCHvM8FcShFEHPLwPOMOdUXN4ZYRa13JMI",
+  "buyer": "EQBoAPd4wVWSmlnJlnCUFCJ5ZJndb38lduGtVo7ZqEWWJHRw",
+  "buyerAwn": "100000000000000",
+  "claimedCycleId": 1,
+  "buyerTonBefore": "0.356022604",
+  "buyerTonAfter": "0.275503247",
+  "buyerTonDelta": "-0.080519357",
+  "pass": true
+}

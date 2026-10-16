@@ -1,0 +1,31 @@
+{
+  "name": "awn-miniapp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "tunnel": "node scripts/start-tunnel.mjs",
+    "botfather": "node scripts/print-botfather.mjs",
+    "go-live": "node scripts/print-botfather.mjs && node scripts/start-tunnel.mjs"
+  },
+  "dependencies": {
+    "@ton/core": "^0.63.1",
+    "@ton/ton": "^16.3.0",
+    "@tonconnect/ui-react": "^5.0.1",
+    "@twa-dev/sdk": "^8.0.2",
+    "buffer": "^6.0.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "recharts": "^3.10.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.8.2",
+    "vite": "^5.4.21"
+  }
+}

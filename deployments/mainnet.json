@@ -1,0 +1,40 @@
+{
+  "network": "mainnet",
+  "deployedAt": "2026-10-16T12:07:27.585Z",
+  "minter": "EQA2T-nreKcnBzZmQfAJfEXCBdx8qPGVi8zGIUhFMtYi1vPs",
+  "owner": "EQA1G4lmw34UsL4P30mvW4k8WSCs1RHUkjXcp1DjE66L1pb4",
+  "ownerNonBounceable": "UQA1G4lmw34UsL4P30mvW4k8WSCs1RHUkjXcp1DjE66L1ss9",
+  "ownerJettonWallet": "EQBQvDCDbXzvdiPplAVP4qqf7iZZX8fmZiucYTNJkZa9q2tm",
+  "metadata": {
+    "name": "AwanToken",
+    "symbol": "AWN",
+    "description": "AwanToken ($AWN) — TON jetton with DEX limits, sell-tax treasury and weekly GRAM claims.",
+    "decimals": "9",
+    "image": "https://awn-miniapp-vercel.vercel.app/awn-logo.png"
+  },
+  "explorer": "https://tonviewer.com/EQA2T-nreKcnBzZmQfAJfEXCBdx8qPGVi8zGIUhFMtYi1vPs",
+  "launchFlags": {
+    "trading": false,
+    "sells": false,
+    "claim": false,
+    "note": "EnableTrading one-way — use ops:postdeploy:mainnet with SKIP_ENABLE_TRADING=1 first"
+  },
+  "postDeployAt": "2026-10-16T12:08:12.288Z",
+  "tradingFlags": {
+    "isTradingEnabled": false,
+    "isSellEnabled": false,
+    "isDexLimitsEnabled": true,
+    "dexPool": "EQATJFmSr5Jd8cP62mHuvcnqqPjFqRyxT5dgpOGkO6hlTl2-"
+  },
+  "dexPool": "EQATJFmSr5Jd8cP62mHuvcnqqPjFqRyxT5dgpOGkO6hlTl2-",
+  "poolOwner": "EQATJFmSr5Jd8cP62mHuvcnqqPjFqRyxT5dgpOGkO6hlTl2-",
+  "poolJettonWallet": "EQCV0QMTc42Np_LCG4FUePkkAisPtTIRhfvbnCz5InDn_Diy",
+  "liquidityAmount": "250000000000000000",
+  "poolSetupAt": "2026-10-16T12:11:42.053Z",
+  "poolBalances": {
+    "poolJetton": "250000000000000000",
+    "ownerJetton": "750000000000000000"
+  },
+  "noteLp": "25% AWN seeded to simulated pool. Create real DEX LP with ~50 TON later; then SetDexPool to DEX vault if needed.",
+  "jettonImageUpdatedAt": "2026-10-16T14:18:59.665Z"
+}

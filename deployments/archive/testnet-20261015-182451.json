@@ -1,0 +1,32 @@
+{
+  "network": "testnet",
+  "deployedAt": "2026-10-15T14:36:05.209Z",
+  "minter": "EQBp3ZJJ8tXMRR5SstgfzrkDJo6rvjNXV52bmCEBhc7Xcuk_",
+  "owner": "EQCt2RzaUaa5VRIWuf31grbI4yqrBr10Vpg2TRyPDXlEtSQP",
+  "metadata": {
+    "name": "AwanToken",
+    "symbol": "AWN",
+    "description": "AwanToken ($AWN) — TON jetton with DEX limits, sell-tax treasury and weekly GRAM claims.",
+    "decimals": "9",
+    "image": "https://raw.githubusercontent.com/ton-blockchain/ton-blockchain.github.io/main/logo.png"
+  },
+  "explorer": "https://testnet.tonviewer.com/EQBp3ZJJ8tXMRR5SstgfzrkDJo6rvjNXV52bmCEBhc7Xcuk_",
+  "tradingEnabledAt": "2026-10-15T14:37:20.120Z",
+  "ownerJettonWallet": "EQDyHUS8dBST9KbuGYSk1R8FKWuihtzgHe_dlwobSpmuX9QE",
+  "tradingFlags": {
+    "isTradingEnabled": true,
+    "isSellEnabled": true,
+    "isDexLimitsEnabled": true,
+    "dexPool": "EQAKxupAMtg9rvtJBGMPpuxBcV2PZWqwgRtEI1f4Xdfuvd0e"
+  },
+  "dexPool": "EQAKxupAMtg9rvtJBGMPpuxBcV2PZWqwgRtEI1f4Xdfuvd0e",
+  "poolOwner": "EQAKxupAMtg9rvtJBGMPpuxBcV2PZWqwgRtEI1f4Xdfuvd0e",
+  "poolJettonWallet": "EQBFJkWlivx5nF1uxBEHmzEkJxfZKhGkCdUN6Vf7_wOEsiXU",
+  "liquidityAmount": "250000000000000000",
+  "poolSetupAt": "2026-10-15T14:38:43.749Z",
+  "poolBalances": {
+    "poolJetton": "250000000000000000",
+    "ownerJetton": "750000000000000000"
+  },
+  "sellClaimTestAt": "2026-10-15T14:41:07.495Z"
+}

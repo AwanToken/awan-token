@@ -1,0 +1,13 @@
+{
+  "projects": [
+    {
+      "name": "AwanToken",
+      "path": "./contracts/awan_token.tact",
+      "output": "./build",
+      "options": {
+        "debug": false,
+        "external": false
+      }
+    }
+  ]
+}

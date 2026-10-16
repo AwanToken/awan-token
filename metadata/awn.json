@@ -1,0 +1,7 @@
+{
+  "name": "AwanToken",
+  "symbol": "AWN",
+  "description": "AwanToken ($AWN) — TON jetton with DEX limits, sell-tax treasury and weekly GRAM claims.",
+  "decimals": "9",
+  "image": "https://raw.githubusercontent.com/ton-blockchain/ton-blockchain.github.io/main/logo.png"
+}

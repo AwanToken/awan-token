@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-15T23:35:35.676Z",
+  "network": "testnet",
+  "results": {
+    "buyOk": "pass",
+    "buyOverLimit": "pass",
+    "sellBlocked": "pass",
+    "notes": []
+  },
+  "addresses": {
+    "minter": "EQB6KK-nxduKxw54eQR4YPvStIUFA_tTjqVs8emrl3KC3Vys",
+    "pool": "EQCQb3D67qlntr6kORNyEhQKd4F9TDBUvRY12P5t-GNxHmgP",
+    "buyer": "EQBoAPd4wVWSmlnJlnCUFCJ5ZJndb38lduGtVo7ZqEWWJHRw",
+    "buyerJettonWallet": "EQDlL6ICbFMsUHIipXuziJ3p4WJEAixb53SZ6QUH7y_xo5Sv"
+  },
+  "amounts": {
+    "buyOk": "1000000000000000",
+    "buyOver": "25000000000000000",
+    "sellProbe": "1000000000000"
+  }
+}
