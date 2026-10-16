@@ -11,8 +11,11 @@
     "deploy:mainnet:wait": "tsx scripts/waitAndDeployMainnet.ts",
     "ops:postdeploy:testnet": "tsx scripts/postDeployTestnet.ts",
     "ops:postdeploy:mainnet": "tsx scripts/postDeployMainnet.ts",
+    "ops:push-wallet-config:mainnet": "tsx scripts/pushWalletConfigMainnet.ts",
+    "ops:fix-dex-launch:mainnet": "tsx scripts/fixDexLaunchMainnet.ts",
     "setup:pool:testnet": "tsx scripts/setupPoolTestnet.ts",
     "setup:pool:mainnet": "tsx scripts/setupPoolMainnet.ts",
+    "setup:dedust:mainnet": "tsx scripts/createDexLpMainnet.ts",
     "check:mainnet-wallet": "tsx scripts/checkMainnetWallet.ts",
     "test:trade:testnet": "tsx scripts/testTradeTestnet.ts",
     "test:sell-claim:testnet": "tsx scripts/testSellClaimTestnet.ts",
@@ -25,8 +28,8 @@
     "miniapp:tunnel": "npm run tunnel --prefix miniapp",
     "miniapp:go-live": "npm run go-live --prefix miniapp"
   },
-
   "dependencies": {
+    "@dedust/sdk": "^0.8.7",
     "@ton/core": "^0.62.0",
     "@ton/crypto": "^3.3.0",
     "@ton/ton": "^15.2.1",

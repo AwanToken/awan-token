@@ -2,10 +2,11 @@
  * Off-chain game economy (entertainment + retention).
  * - spendableAwn: starter 10 + rare finds, spent on Mario-style powerups
  * - goldCoins: classic collectibles (score / fun only)
- * - minedAwn: "mined" toward a future owner-activated claim from claim pool
- *   (NOT minted on-chain here — owner settles later via Command Deck)
+ * - minedAwn: "mined" toward claim from claim pool (NOT minted on-chain)
+ *   Player can queue at ≥ MINED_CLAIM_THRESHOLD; owner settles via BatchTransfer
  */
 
+import { MINED_CLAIM_THRESHOLD } from "../config";
 import type { DifficultyId } from "../game/difficulty";
 import {
   formatTelegramHandle,
@@ -13,6 +14,8 @@ import {
   toTelegramIdentity,
   type TelegramIdentity,
 } from "./telegram";
+
+export { MINED_CLAIM_THRESHOLD };
 
 export type RunPowerId = "mushroom" | "fire_flower" | "star" | "leaf";
 
@@ -202,6 +205,11 @@ export function getMinedPending(wallet: string | null): number {
   return loadEco(wallet).minedAwn;
 }
 
+/** True when mined balance meets the claim-pool queue threshold. */
+export function canClaimMined(wallet: string | null): boolean {
+  return getMinedPending(wallet) >= MINED_CLAIM_THRESHOLD;
+}
+
 /** Mark mined as “queued for owner claim batch” without wiping (owner settles off-app). */
 export function markClaimQueued(wallet: string | null): Eco {
   const eco = loadEco(wallet);
@@ -236,6 +244,22 @@ export function queueMinedForOwnerClaim(wallet: string): OwnerClaimQueue[] {
   eco.minedAwn = 0;
   saveEco(wallet, eco);
   return q;
+}
+
+/**
+ * Player claim: queue all mined $AWN (≥ threshold) for owner BatchTransfer
+ * settlement from the claim-pool path. Clears local mined counter.
+ */
+export function claimMinedToPool(
+  wallet: string | null,
+): { ok: true; queued: number; queue: OwnerClaimQueue[] } | { ok: false; error: string } {
+  if (!wallet) return { ok: false, error: "wallet_required" };
+  const pending = getMinedPending(wallet);
+  if (pending < MINED_CLAIM_THRESHOLD) {
+    return { ok: false, error: "below_threshold" };
+  }
+  const queue = queueMinedForOwnerClaim(wallet);
+  return { ok: true, queued: pending, queue };
 }
 
 /** Display label for owner panels (queue entry or live session). */

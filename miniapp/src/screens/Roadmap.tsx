@@ -112,15 +112,15 @@ export function RoadmapScreen() {
         <dl className="roadmap-spec-grid">
           <div>
             <dt>{r.specBuy}</dt>
-            <dd>0.5% {r.specOfPool}</dd>
+            <dd>on-chain % {r.specOfPool}</dd>
           </div>
           <div>
             <dt>{r.specSell}</dt>
-            <dd>min(0.5% {r.specOfPool}, 0.5% {r.specOfHold})</dd>
+            <dd>min(% {r.specOfPool}, % {r.specOfHold})</dd>
           </div>
           <div>
             <dt>{r.specTax}</dt>
-            <dd>3% → {r.specTaxDest}</dd>
+            <dd>config → {r.specTaxDest}</dd>
           </div>
           <div>
             <dt>{r.specClaim}</dt>

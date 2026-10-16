@@ -630,6 +630,39 @@ input {
 }
 
 .lede,
+.buy-limit-banner {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 77, 109, 0.55);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 77, 109, 0.18),
+    rgba(255, 43, 214, 0.08)
+  );
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.buy-limit-banner strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: #ff8a9a;
+  margin-bottom: 6px;
+}
+
+.buy-limit-banner p {
+  margin: 0 0 6px;
+  color: var(--text);
+}
+
+.buy-limit-banner .buy-limit-danger {
+  margin: 0;
+  color: #ff4d6d;
+  font-weight: 600;
+}
+
 .hint {
   margin: 0 0 12px;
   color: var(--muted);
@@ -1343,7 +1376,7 @@ code {
   padding: 6px 2px;
 }
 
-/* —— Games hub / AWN Run —— */
+/* Ã¢ÂÂÃ¢ÂÂ Games hub / AWN Run Ã¢ÂÂÃ¢ÂÂ */
 .games-hub {
   display: flex;
   flex-direction: column;
@@ -1480,6 +1513,34 @@ code {
 .eco-strip strong {
   color: var(--cyan);
   font-family: var(--font-display);
+}
+
+.eco-threshold {
+  font-style: normal;
+  opacity: 0.65;
+  font-size: 0.8em;
+}
+
+.eco-claim-progress {
+  height: 6px;
+  border: 1px solid rgba(125, 249, 255, 0.25);
+  background: rgba(8, 2, 18, 0.6);
+  overflow: hidden;
+}
+
+.eco-claim-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--magenta), var(--cyan));
+  transition: width 0.35s ease;
+}
+
+.eco-claim-btn {
+  align-self: stretch;
+  margin-top: 2px;
+}
+
+.eco-claim-btn:disabled {
+  opacity: 0.45;
 }
 
 .launch-dock {
@@ -1666,7 +1727,7 @@ code {
   grid-template-columns: 1fr 1.15fr 1fr 1.15fr;
 }
 
-/* —— Audio dock (game mute + Spotify embed) —— */
+/* Ã¢ÂÂÃ¢ÂÂ Audio dock (game mute + Spotify embed) Ã¢ÂÂÃ¢ÂÂ */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1679,7 +1740,7 @@ code {
   border: 0;
 }
 
-/* Header slot: ♫ left of lang/wallet; panel drops below without covering Connect Wallet */
+/* Header slot: Ã¢ÂÂ« left of lang/wallet; panel drops below without covering Connect Wallet */
 .audio-dock {
   position: relative;
   z-index: 26;
@@ -1934,7 +1995,7 @@ code {
   height: 120px;
 }
 
-/* Closed panel: keep iframe in DOM/playing — do not use display:none */
+/* Closed panel: keep iframe in DOM/playing Ã¢ÂÂ do not use display:none */
 .audio-dock-embed.bg-playing {
   position: fixed;
   width: 1px;
@@ -1959,7 +2020,7 @@ code {
   opacity: 0.85;
 }
 
-/* —— Roadmap / smart contract —— */
+/* Ã¢ÂÂÃ¢ÂÂ Roadmap / smart contract Ã¢ÂÂÃ¢ÂÂ */
 .roadmap-panel .lede {
   margin-bottom: 14px;
 }
@@ -2136,7 +2197,7 @@ code {
   }
 }
 
-/* �� Wallet gate spoiler �� */
+/* ÂÂ Wallet gate spoiler ÂÂ */
 .wallet-spoiler {
   position: relative;
   min-height: 180px;

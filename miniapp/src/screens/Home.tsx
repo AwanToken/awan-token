@@ -10,22 +10,88 @@ import {
   YAxis,
 } from "recharts";
 import { WalletSpoiler } from "../components/WalletSpoiler";
-import { EXPLORER, MINTER, NETWORK, PAIR_LABEL, RPC } from "../config";
+import {
+  MINTER,
+  NETWORK,
+  PAIR_LABEL,
+  RPC,
+  STON_FI_BUY_URL,
+  STON_FI_SELL_URL,
+} from "../config";
 import { useI18n } from "../i18n/I18nContext";
 import { bootstrapFeed, tickFeed, type CandlePoint } from "../lib/priceFeed";
 import { openExternal } from "../lib/telegram";
+import {
+  fetchBuyLimitGuard,
+  fromNanoTon,
+  fromUnits,
+  type BuyLimitGuard,
+} from "../lib/ton";
 
 export function HomeScreen() {
   const { t } = useI18n();
   const wallet = useTonAddress();
   const locked = !wallet;
   const [data, setData] = useState<CandlePoint[]>(() => bootstrapFeed());
+  const [guard, setGuard] = useState<BuyLimitGuard | null>(null);
+  const [guardErr, setGuardErr] = useState("");
   const last = data[data.length - 1]?.price ?? 0;
 
   useEffect(() => {
     const id = setInterval(() => setData(tickFeed()), 2500);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      fetchBuyLimitGuard()
+        .then((g) => {
+          if (!cancelled) {
+            setGuard(g);
+            setGuardErr("");
+          }
+        })
+        .catch((e) => {
+          if (!cancelled) {
+            setGuardErr(e instanceof Error ? e.message : String(e));
+          }
+        });
+    };
+    load();
+    const id = setInterval(load, 20_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  const maxTonLabel =
+    guard?.estimatedMaxTonIn != null
+      ? `~${fromNanoTon(guard.estimatedMaxTonIn)} TON`
+      : "—";
+  const maxAwnLabel =
+    guard?.maxBuyAwn != null ? `${fromUnits(guard.maxBuyAwn)} $AWN` : "—";
+
+  function onBuy() {
+    // Soft UX gate: show live on-chain buy cap before opening Ston.fi.
+    if (guard?.isDexLimitsEnabled && guard.estimatedMaxTonIn != null) {
+      const ok = window.confirm(
+        `${t.home.buyConfirmTitle}\n\n` +
+          `${t.home.buyConfirmBody
+            .replace("{pct}", guard.buyPctLabel)
+            .replace("{maxTon}", maxTonLabel)
+            .replace("{maxAwn}", maxAwnLabel)}\n\n` +
+          t.home.buyConfirmWarn,
+      );
+      if (!ok) return;
+    }
+    openExternal(STON_FI_BUY_URL);
+  }
+
+  function onSell() {
+    openExternal(STON_FI_SELL_URL);
+  }
 
   return (
     <section className="panel home-panel fade-in">
@@ -76,19 +142,25 @@ export function HomeScreen() {
       </div>
 
       <WalletSpoiler locked={locked} compact>
+        {guard?.isDexLimitsEnabled && (
+          <div className="buy-limit-banner" role="status">
+            <strong>{t.home.limitTitle}</strong>
+            <p>
+              {t.home.limitBody
+                .replace("{pct}", guard.buyPctLabel)
+                .replace("{maxTon}", maxTonLabel)
+                .replace("{maxAwn}", maxAwnLabel)}
+            </p>
+            <p className="buy-limit-danger">{t.home.limitDanger}</p>
+          </div>
+        )}
+        {guardErr && <p className="hint">{t.home.limitLoadFail}</p>}
+
         <div className="hero-actions" style={{ marginTop: 12 }}>
-          <button
-            type="button"
-            className="neon-btn buy"
-            onClick={() => openExternal(`${EXPLORER}/${MINTER}`)}
-          >
+          <button type="button" className="neon-btn buy" onClick={onBuy}>
             {t.home.buy}
           </button>
-          <button
-            type="button"
-            className="neon-btn sell"
-            onClick={() => openExternal(`${EXPLORER}/${MINTER}`)}
-          >
+          <button type="button" className="neon-btn sell" onClick={onSell}>
             {t.home.sell}
           </button>
         </div>
@@ -105,6 +177,14 @@ export function HomeScreen() {
             <span>{t.home.rpc}</span>
             <strong className="mono truncate">{RPC.replace("https://", "").slice(0, 22)}</strong>
           </div>
+          {guard && (
+            <div className="meta-cell">
+              <span>{t.home.limitMeta}</span>
+              <strong>
+                {guard.isDexLimitsEnabled ? guard.buyPctLabel : "OFF"}
+              </strong>
+            </div>
+          )}
         </div>
         <p className="hint">{t.home.hint}</p>
       </WalletSpoiler>

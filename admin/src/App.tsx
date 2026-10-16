@@ -33,6 +33,7 @@ import {
   bodyDepositTreasury,
   bodyDexLimits,
   bodyEnableTrading,
+  bodySetBuyLimitBp,
   bodyForceCloseClaimWindow,
   bodyForceOpenClaimWindow,
   bodyJettonTransfer,
@@ -101,6 +102,9 @@ export default function App() {
   const [tradingOn, setTradingOn] = useState(false);
   const [sellOn, setSellOn] = useState(false);
   const [limitsOn, setLimitsOn] = useState(true);
+  const [maxBuyBp, setMaxBuyBp] = useState(300);
+  const [maxSellBp, setMaxSellBp] = useState(300);
+  const [buyBpDraft, setBuyBpDraft] = useState("1500");
   const [treasury, setTreasury] = useState("0");
   const [pendingTax, setPendingTax] = useState("0");
   const [pendingTaxRaw, setPendingTaxRaw] = useState(0n);
@@ -203,6 +207,8 @@ export default function App() {
       setTradingOn(st.isTradingEnabled);
       setSellOn(st.isSellEnabled);
       setLimitsOn(st.isDexLimitsEnabled);
+      setMaxBuyBp(st.maxBuyLimitBp);
+      setMaxSellBp(st.maxSellLimitBp);
       setDexPool(st.dexPool);
       setTreasury(fromUnits(st.treasury));
       setPendingTax(fromUnits(st.pendingTaxJettons));
@@ -395,6 +401,20 @@ export default function App() {
         <div className="grid">
           <section className="panel span8">
             <h2>Live telemetry</h2>
+            <div
+              className={`on-air ${tradingOn ? "on" : "off"}`}
+              role="status"
+              aria-live="polite"
+              title={
+                tradingOn
+                  ? "Trading enabled on-chain (isTradingEnabled)"
+                  : "Trading disabled on-chain (isTradingEnabled)"
+              }
+            >
+              <span className="on-air-tag">TRADING</span>
+              <span className="on-air-lamp" aria-hidden />
+              <span className="on-air-label">{tradingOn ? "ON AIR" : "OFF AIR"}</span>
+            </div>
             <div className="stat-row">
               <div className="stat">
                 <div className="k">Treasury GRAM</div>
@@ -406,7 +426,10 @@ export default function App() {
               </div>
               <div className="stat">
                 <div className="k">DEX limits</div>
-                <div className="v">{limitsOn ? "ON" : "OFF"}</div>
+                <div className="v">
+                  {limitsOn ? "ON" : "OFF"} · buy {(maxBuyBp / 100).toFixed(maxBuyBp % 100 ? 1 : 0)}% / sell{" "}
+                  {(maxSellBp / 100).toFixed(maxSellBp % 100 ? 1 : 0)}%
+                </div>
               </div>
               <div className="stat">
                 <div className="k">Network</div>
@@ -715,6 +738,64 @@ export default function App() {
                 Sync config → mio wallet
               </button>
             </div>
+            <div className="btn-row" style={{ marginTop: 10, alignItems: "center", gap: 8 }}>
+              <label className="muted" htmlFor="buy-bp-draft">
+                SetBuyLimitBp
+              </label>
+              <input
+                id="buy-bp-draft"
+                type="number"
+                min={1}
+                max={10000}
+                value={buyBpDraft}
+                onChange={(e) => setBuyBpDraft(e.target.value)}
+                style={{ width: 88 }}
+              />
+              <span className="muted">bp (1500 = 15%)</span>
+              <button
+                className="cmd warn"
+                disabled={busy}
+                onClick={() => {
+                  const bp = Number(buyBpDraft);
+                  if (!Number.isInteger(bp) || bp <= 0 || bp > 10_000) {
+                    log("Buy bp must be integer 1..10000", "err");
+                    return;
+                  }
+                  void sendBoc(
+                    MINTER,
+                    toNano("0.05"),
+                    bodySetBuyLimitBp(bp),
+                    `SetBuyLimitBp(${bp}) — poi sync vault`,
+                  );
+                }}
+              >
+                Set buy limit bp
+              </button>
+              <button
+                className="cmd"
+                disabled={busy || !dexPool}
+                onClick={() => {
+                  if (!dexPool) {
+                    log("DEX pool / vault non impostato", "err");
+                    return;
+                  }
+                  void sendBoc(
+                    MINTER,
+                    toNano("0.1"),
+                    bodyPushConfig(dexPool),
+                    "PushWalletConfig vault",
+                  );
+                }}
+              >
+                Sync config → vault
+              </button>
+            </div>
+            <p className="muted" style={{ marginTop: 10 }}>
+              <strong>DeDust:</strong> il limite buy è sul jetton wallet del vault — dopo lo swap.
+              Superarlo = bounce 10374, TON resta nel pool (no refund). Ston.fi fallisce prima.
+              Buy/sell bp sono separati; <code>SetDexLimitsEnabled</code> spegne entrambi.
+              Dopo SetBuyLimitBp fai sempre PushWalletConfig sul vault.
+            </p>
             <p className="muted" style={{ marginTop: 10 }}>
               Collega <strong>AWN-Owner</strong>. Stop trading totale non è un flag separato: usa
               stop vendite + limiti / blacklist. EnableTrading è one-way on-chain.

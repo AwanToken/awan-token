@@ -5,9 +5,12 @@ import { DIFFICULTIES, type DifficultyId } from "../game/difficulty";
 import { SHIPS, drawShip, type ShipId } from "../game/ships";
 import { useI18n } from "../i18n/I18nContext";
 import { useAppStatus } from "../lib/appStatus";
+import { MINED_CLAIM_THRESHOLD } from "../config";
 import {
   RUN_POWERS,
   buyPower,
+  canClaimMined,
+  claimMinedToPool,
   ensureStarterGrant,
   getMinedPending,
   loadEco,
@@ -91,12 +94,37 @@ function EcoWalletStrip({
   spendable,
   gold,
   mined,
+  wallet,
+  onClaimed,
 }: {
   spendable: number;
   gold: number;
   mined: number;
+  wallet: string | null;
+  onClaimed?: () => void;
 }) {
   const { t } = useI18n();
+  const [claimMsg, setClaimMsg] = useState("");
+  const ready = canClaimMined(wallet);
+  const progress = Math.min(100, Math.round((mined / MINED_CLAIM_THRESHOLD) * 100));
+
+  function onClaimMined() {
+    const r = claimMinedToPool(wallet);
+    if (!r.ok) {
+      setClaimMsg(
+        r.error === "wallet_required"
+          ? t.games.claimNeedWallet
+          : t.games.claimNeedMore.replace("{n}", String(MINED_CLAIM_THRESHOLD)),
+      );
+      return;
+    }
+    setClaimMsg(
+      t.games.claimQueued.replace("{amount}", String(r.queued)),
+    );
+    haptic("medium");
+    onClaimed?.();
+  }
+
   return (
     <div className="eco-wallet-panel">
       <p className="eco-wallet-title">{t.games.tokenMenu}</p>
@@ -106,12 +134,39 @@ function EcoWalletStrip({
         </span>
         <span>
           {t.games.minedPending}: <strong>{mined}</strong>
+          <em className="eco-threshold">
+            {" "}
+            / {MINED_CLAIM_THRESHOLD}
+          </em>
         </span>
         <span>
           {t.games.gold}: <strong>{gold}</strong>
         </span>
       </div>
+      <div
+        className="eco-claim-progress"
+        role="progressbar"
+        aria-valuenow={progress}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div className="eco-claim-bar" style={{ width: `${progress}%` }} />
+      </div>
+      <p className="hint">{t.games.minedPendingHint}</p>
+      <button
+        type="button"
+        className="neon-btn buy eco-claim-btn"
+        disabled={!wallet || !ready}
+        onClick={onClaimMined}
+      >
+        {!wallet
+          ? t.games.claimNeedWallet
+          : ready
+            ? t.games.claimMined
+            : t.games.claimNeedMore.replace("{n}", String(MINED_CLAIM_THRESHOLD))}
+      </button>
       <p className="hint">{t.games.economyHint}</p>
+      {claimMsg && <p className="hint glow-cyan">{claimMsg}</p>}
     </div>
   );
 }
@@ -192,6 +247,8 @@ export function GamesScreen({
           spendable={eco.spendableAwn}
           gold={eco.goldCoins}
           mined={eco.minedAwn}
+          wallet={wallet}
+          onClaimed={refreshEco}
         />
 
         <button
@@ -257,6 +314,8 @@ export function GamesScreen({
           spendable={eco.spendableAwn}
           gold={eco.goldCoins}
           mined={getMinedPending(wallet)}
+          wallet={wallet}
+          onClaimed={refreshEco}
         />
 
         <div className="diff-block">
@@ -363,6 +422,8 @@ export function GamesScreen({
         spendable={loadEco(wallet).spendableAwn}
         gold={eco.goldCoins}
         mined={getMinedPending(wallet)}
+        wallet={wallet}
+        onClaimed={refreshEco}
       />
       <p className="hint">{t.games.starterHint}</p>
 

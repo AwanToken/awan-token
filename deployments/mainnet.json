@@ -14,27 +14,62 @@
   },
   "explorer": "https://tonviewer.com/EQA2T-nreKcnBzZmQfAJfEXCBdx8qPGVi8zGIUhFMtYi1vPs",
   "launchFlags": {
-    "trading": false,
+    "trading": true,
     "sells": false,
     "claim": false,
-    "note": "EnableTrading one-way — use ops:postdeploy:mainnet with SKIP_ENABLE_TRADING=1 first"
+    "note": "DEX limits raised; sell tax removed. Sells still gated by isSellEnabled. Ston.fi has no AWN pool yet — SetDexPool is DeDust vault only (single dex)."
   },
   "postDeployAt": "2026-10-16T12:08:12.288Z",
   "tradingFlags": {
-    "isTradingEnabled": false,
+    "isTradingEnabled": true,
     "isSellEnabled": false,
     "isDexLimitsEnabled": true,
-    "dexPool": "EQATJFmSr5Jd8cP62mHuvcnqqPjFqRyxT5dgpOGkO6hlTl2-"
+    "dexPool": "EQArKCfnuryYlSR5J8Dx6VeKEwjZjpkLUdb-JioOOuyPQbP-",
+    "verifiedAt": "2026-10-16T16:55:27.441Z",
+    "enableTradingTxLt": "110372586000003",
+    "walletConfigSyncRequired": false,
+    "note": "Sell tax 0; buy/sell limits 1500/300 bp. PushWalletConfig vault+owner. isSellEnabled=false blocks sells into SetDexPool (DeDust vault). Ston.fi sells need LP + EnableSell; do not flip SetDexPool off DeDust without dual-dex support.",
+    "vaultWalletIsTradingEnabled": true,
+    "maxBuyLimitBp": 1500,
+    "maxSellLimitBp": 300,
+    "sellTaxBp": 0
   },
-  "dexPool": "EQATJFmSr5Jd8cP62mHuvcnqqPjFqRyxT5dgpOGkO6hlTl2-",
+  "dexPool": "EQArKCfnuryYlSR5J8Dx6VeKEwjZjpkLUdb-JioOOuyPQbP-",
   "poolOwner": "EQATJFmSr5Jd8cP62mHuvcnqqPjFqRyxT5dgpOGkO6hlTl2-",
-  "poolJettonWallet": "EQCV0QMTc42Np_LCG4FUePkkAisPtTIRhfvbnCz5InDn_Diy",
+  "poolJettonWallet": "EQDp7_3i-5D-U7uNCfX9fmWS3CPmb1ZAFyzPe2ehSAR6kn3E",
   "liquidityAmount": "250000000000000000",
   "poolSetupAt": "2026-10-16T12:11:42.053Z",
   "poolBalances": {
     "poolJetton": "250000000000000000",
-    "ownerJetton": "750000000000000000"
+    "ownerJetton": "500000000000000000",
+    "dedustLpAwn": "250000000000000000"
   },
-  "noteLp": "25% AWN seeded to simulated pool. Create real DEX LP with ~50 TON later; then SetDexPool to DEX vault if needed.",
-  "jettonImageUpdatedAt": "2026-10-16T14:18:59.665Z"
+  "noteLp": "DeDust volatile LP live. SetDexPool → AWN jetton vault. Simulated pool AWN remains until EnableTrading + pool wallet transfer. Next: EnableTrading from Command Deck.",
+  "jettonImageUpdatedAt": "2026-10-16T14:18:59.665Z",
+  "dedustPool": "EQDRwZaP6FX2J-VMQxVRydeTAWDKrVomkai5G-Iwji43X8oo",
+  "dedustAwnVault": "EQArKCfnuryYlSR5J8Dx6VeKEwjZjpkLUdb-JioOOuyPQbP-",
+  "dedustTonVault": "EQDa4VOnTYlLvDJ0gZjNYm5PXfSmmtL6Vs6A_CZEtXCNICq_",
+  "simulatedPoolOwner": "EQATJFmSr5Jd8cP62mHuvcnqqPjFqRyxT5dgpOGkO6hlTl2-",
+  "lpTonAmount": "50000000000",
+  "lpCreatedAt": "2026-10-16T15:39:59.344Z",
+  "lpExplorer": {
+    "pool": "https://tonviewer.com/EQDRwZaP6FX2J-VMQxVRydeTAWDKrVomkai5G-Iwji43X8oo",
+    "awnVault": "https://tonviewer.com/EQArKCfnuryYlSR5J8Dx6VeKEwjZjpkLUdb-JioOOuyPQbP-",
+    "factory": "https://tonviewer.com/EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67"
+  },
+  "ownerTonAfterLp": "5.01135764",
+  "setDexPoolStatus": "submitted",
+  "poolReserves": {
+    "tonNano": "50000000000",
+    "awnNano": "250000000000000000"
+  },
+  "walletConfigSyncAt": "2026-10-16T16:18:22.874Z",
+  "dexLimitsFixAt": "2026-10-16T16:55:27.441Z",
+  "dexLimits": {
+    "maxBuyLimitBp": 1500,
+    "maxSellLimitBp": 300,
+    "sellTaxBp": 0,
+    "isDexLimitsEnabled": true,
+    "vaultWalletSynced": true
+  }
 }

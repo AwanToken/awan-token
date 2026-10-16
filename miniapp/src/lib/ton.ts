@@ -9,7 +9,16 @@ import {
   type TupleItem,
 } from "@ton/core";
 import { TonClient } from "@ton/ton";
-import { CLAIM_PERIOD, CLAIM_WINDOW, DECIMALS, MINTER, NETWORK, RPC, TONAPI_BASE } from "../config";
+import {
+  CLAIM_PERIOD,
+  CLAIM_WINDOW,
+  DECIMALS,
+  DEDUST_POOL,
+  MINTER,
+  NETWORK,
+  RPC,
+  TONAPI_BASE,
+} from "../config";
 
 /** Opcodes from compiled AwanToken (same approach as admin/src/lib/ton.ts) */
 const OP = {
@@ -308,6 +317,9 @@ export type TradingSnap = {
   isSellEnabled: boolean;
   isDexLimitsEnabled: boolean;
   dexPool: string | null;
+  maxBuyLimitBp: number;
+  maxSellLimitBp: number;
+  sellTaxBp: number;
   poolJettonBalance: bigint;
 };
 
@@ -317,10 +329,10 @@ export async function fetchTradingSnap(): Promise<TradingSnap> {
   const isSellEnabled = tr.readBoolean();
   const isDexLimitsEnabled = tr.readBoolean();
   const dexPool = tr.readAddressOpt();
-  tr.readNumber(); // maxBuy
-  tr.readNumber(); // maxSell
+  const maxBuyLimitBp = Number(tr.readNumber());
+  const maxSellLimitBp = Number(tr.readNumber());
   tr.readNumber(); // possession
-  tr.readNumber(); // sellTax
+  const sellTaxBp = Number(tr.readNumber());
   tr.readBigNumber(); // totalSupply in config
   const poolJettonBalance = tr.readBigNumber();
   return {
@@ -328,7 +340,80 @@ export async function fetchTradingSnap(): Promise<TradingSnap> {
     isSellEnabled,
     isDexLimitsEnabled,
     dexPool: dexPool ? toFriendlyAddress(dexPool) : null,
+    maxBuyLimitBp,
+    maxSellLimitBp,
+    sellTaxBp,
     poolJettonBalance,
+  };
+}
+
+const BP = 10_000n;
+
+/**
+ * Live buy-limit guard for DeDust path.
+ * On-chain max buy = vault JW AWN balance × maxBuyLimitBp / 10000.
+ * Estimated max TON in uses constant-product (no fee) — slightly conservative.
+ */
+export type BuyLimitGuard = {
+  isDexLimitsEnabled: boolean;
+  maxBuyLimitBp: number;
+  vaultAwnBalance: bigint;
+  maxBuyAwn: bigint | null;
+  poolTonReserve: bigint | null;
+  estimatedMaxTonIn: bigint | null;
+  buyPctLabel: string;
+};
+
+/** Max TON in so AWN out ≤ maxBuy (x·y = k, fee ignored). */
+export function estimateMaxTonInForBuyLimit(
+  poolTon: bigint,
+  poolAwn: bigint,
+  maxBuyAwn: bigint,
+): bigint | null {
+  if (poolTon <= 0n || poolAwn <= 0n || maxBuyAwn <= 0n) return null;
+  if (maxBuyAwn >= poolAwn) return null; // effectively uncapped by this check
+  // dx <= (maxBuy * x) / (y - maxBuy)
+  return (maxBuyAwn * poolTon) / (poolAwn - maxBuyAwn);
+}
+
+export async function fetchBuyLimitGuard(): Promise<BuyLimitGuard> {
+  const snap = await fetchTradingSnap();
+  const vaultAwn = snap.poolJettonBalance;
+  const maxBuyAwn =
+    snap.isDexLimitsEnabled && snap.maxBuyLimitBp > 0
+      ? (vaultAwn * BigInt(snap.maxBuyLimitBp)) / BP
+      : null;
+
+  // Native DeDust vault is shared across ALL pools — use this pool's get_reserves.
+  let poolTonReserve: bigint | null = null;
+  let poolAwnReserve: bigint | null = null;
+  try {
+    const reserves = await runGetMethod(DEDUST_POOL, "get_reserves");
+    poolTonReserve = reserves.readBigNumber();
+    poolAwnReserve = reserves.readBigNumber();
+  } catch {
+    poolTonReserve = null;
+    poolAwnReserve = null;
+  }
+
+  const awnForQuote = poolAwnReserve != null && poolAwnReserve > 0n ? poolAwnReserve : vaultAwn;
+  const estimatedMaxTonIn =
+    maxBuyAwn != null && poolTonReserve != null
+      ? estimateMaxTonInForBuyLimit(poolTonReserve, awnForQuote, maxBuyAwn)
+      : null;
+
+  const buyPctLabel = snap.isDexLimitsEnabled
+    ? `${(snap.maxBuyLimitBp / 100).toFixed(snap.maxBuyLimitBp % 100 === 0 ? 0 : 1)}%`
+    : "off";
+
+  return {
+    isDexLimitsEnabled: snap.isDexLimitsEnabled,
+    maxBuyLimitBp: snap.maxBuyLimitBp,
+    vaultAwnBalance: vaultAwn,
+    maxBuyAwn,
+    poolTonReserve,
+    estimatedMaxTonIn,
+    buyPctLabel,
   };
 }
 

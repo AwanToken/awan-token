@@ -8,12 +8,13 @@ import "./index.css";
 /**
  * TonConnect requires a publicly reachable HTTPS manifest.
  * Localhost URLs fail when the wallet (Tonkeeper, etc.) tries to fetch them.
- * Hosted on the miniapp Netlify origin so Connect works from admin on :5173.
+ * Hosted on the miniapp Vercel origin (Netlify awantoken.netlify.app is dead/404).
  */
-/** Prefer dedicated deck manifest; fall back to live miniapp manifest (already on Netlify HTTPS). */
+const VERCEL_ORIGIN = "https://awn-miniapp-vercel.vercel.app";
+/** Live HTTPS manifest (Netlify is 404). Prefer command-deck; tonconnect-manifest is always on prod. */
 const manifestUrl =
   (import.meta.env.VITE_TONCONNECT_MANIFEST as string | undefined) ||
-  "https://awantoken.netlify.app/tonconnect-manifest.json";
+  `${VERCEL_ORIGIN}/tonconnect-manifest.json`;
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -21,7 +22,7 @@ createRoot(document.getElementById("root")!).render(
       manifestUrl={manifestUrl}
       actionsConfiguration={{
         returnStrategy: "back",
-        twaReturnUrl: "https://awantoken.netlify.app" as `${string}://${string}`,
+        twaReturnUrl: VERCEL_ORIGIN as `${string}://${string}`,
       }}
     >
       <App />

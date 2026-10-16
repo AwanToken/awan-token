@@ -55,6 +55,14 @@ export type Dict = {
     minter: string;
     rpc: string;
     hint: string;
+    limitTitle: string;
+    limitBody: string;
+    limitDanger: string;
+    limitMeta: string;
+    limitLoadFail: string;
+    buyConfirmTitle: string;
+    buyConfirmBody: string;
+    buyConfirmWarn: string;
   };
   claim: {
     eyebrow: string;
@@ -113,6 +121,10 @@ export type Dict = {
     minedPending: string;
     gold: string;
     minedPendingHint: string;
+    claimMined: string;
+    claimNeedMore: string;
+    claimNeedWallet: string;
+    claimQueued: string;
     ownerClaim: string;
     ownerClaimHint: string;
     queueMined: string;
@@ -262,12 +274,24 @@ export const translations: Record<Lang, Dict> = {
     },
     home: {
       eyebrow: "Feed live · DEX mock",
-      buy: "Compra",
-      sell: "Vendi",
+      buy: "Compra su Ston.fi",
+      sell: "Vendi su Ston.fi",
       network: "Rete",
       minter: "Minter",
       rpc: "RPC",
-      hint: "Grafico mock locale (refresh 2.5s). Collega DeDust/STON.fi dopo. Compra/Vendi apre l’explorer.",
+      hint: "Buy/Sell aprono Ston.fi (TON↔$AWN). Resta sotto il max buy on-chain — Ston.fi rifiuta prima; evita DeDust per non lasciare TON nel pool.",
+      limitTitle: "Limite buy on-chain",
+      limitBody:
+        "Max per swap ≈ {pct} del vault AWN → circa {maxTon} (≤ {maxAwn}). Preferisci Ston.fi: fallisce prima del transfer.",
+      limitDanger:
+        "Su DeDust oltre il limite: TON resta nel pool (bounce 10374), niente $AWN. Usa Ston.fi.",
+      limitMeta: "Buy cap",
+      limitLoadFail: "Impossibile leggere il limite buy on-chain — compra con cautela.",
+      buyConfirmTitle: "Conferma prima di Ston.fi",
+      buyConfirmBody:
+        "Limite attuale {pct}: resta sotto ~{maxTon} (max ~{maxAwn} per tx).",
+      buyConfirmWarn:
+        "Ston.fi valida prima dello swap. Resta sotto il cap per evitare fallimenti.",
     },
     claim: {
       eyebrow: "Claim settimanale ponderato",
@@ -320,7 +344,7 @@ export const translations: Record<Lang, Dict> = {
       siegeSub: "Shooter vertical neon · navi e upgrade",
       runSub: "Platformer · monete oro + $AWN (~14%)",
       economyHint:
-        "I $AWN minati in gioco sono in attesa (held). Solo l'owner attiva il claim nascosto: il settlement arriva dal claim pool — non sono mint gratis.",
+        "I $AWN minati (≥100) si accodano al claim pool. Settlement on-chain = BatchTransfer Owner — non mint gratis.",
       runLede: "Corri, salta, raccogli. Il giocatore è il logo $AWN.",
       starterHint: "Prima partita: +10 $AWN spendibili per fungo, fiore, stella, foglia.",
       powerShop: "Power-up Mario-like",
@@ -331,7 +355,12 @@ export const translations: Record<Lang, Dict> = {
       minedPending: "Minati in attesa",
       gold: "Oro",
       minedPendingHint:
-        "Neon Siege + AWN Run condividono lo stesso saldo minato. In claim si scambiano dal pool, non si mintano.",
+        "Neon Siege + AWN Run condividono il saldo minato. A ≥100 $AWN puoi claimare verso il claim pool.",
+      claimMined: "Claim → claim pool",
+      claimNeedMore: "Serve ≥{n} $AWN minati",
+      claimNeedWallet: "Collega wallet per claim",
+      claimQueued:
+        "Accodati {amount} $AWN per settlement dal claim pool (Owner BatchTransfer).",
       ownerClaim: "Owner · coda claim minati (nascosto)",
       ownerClaimHint:
         "PIN OWNER. Accoda tutti i $AWN minati per settlement futuro dal claim pool (BatchTransfer) — non regala token on-chain.",
@@ -400,10 +429,10 @@ export const translations: Record<Lang, Dict> = {
       p1b3: "Blacklist per wallet abusivi",
       p2Title: "2 · Limiti DEX",
       p2Body: "Protezione anti-whale: buy e sell con tetti sulla pool e sul possesso.",
-      p2b1: "Buy max 0,5% del saldo AWN in pool",
-      p2b2: "Sell = min(0,5% pool, 0,5% del tuo possesso)",
-      p2b3: "Oltre il limite la tx viene rifiutata",
-      p3Title: "3 · Sell tax 3%",
+      p2b1: "Buy max = % del saldo AWN nel vault DEX (on-chain)",
+      p2b2: "Sell = min(% pool, % del tuo possesso) quando le vendite sono ON",
+      p2b3: "Su DeDust oltre il limite: TON resta nel pool (no refund automatico)",
+      p3Title: "3 · Sell tax",
       p3Body: "Su ogni vendita verso la pool resta il 3% in $AWN come tax.",
       p3b1: "Tax accumulata su pendingTaxJettons",
       p3b2: "Owner → SweepTax verso Keeper",
@@ -481,12 +510,24 @@ export const translations: Record<Lang, Dict> = {
     },
     home: {
       eyebrow: "Live feed · mock DEX",
-      buy: "Buy",
-      sell: "Sell",
+      buy: "Buy on Ston.fi",
+      sell: "Sell on Ston.fi",
       network: "Network",
       minter: "Minter",
       rpc: "RPC",
-      hint: "Local mock chart (2.5s refresh). Hook DeDust/STON.fi later. Buy/Sell opens explorer.",
+      hint: "Buy/Sell open Ston.fi (TON↔$AWN). Stay under the on-chain max buy — Ston.fi fails early; avoid DeDust stranded-TON bounce.",
+      limitTitle: "On-chain buy limit",
+      limitBody:
+        "Max per swap ≈ {pct} of vault AWN → about {maxTon} (≤ {maxAwn}). Prefer Ston.fi: it fails before the transfer.",
+      limitDanger:
+        "On DeDust over limit: TON stays in the pool (bounce 10374), no $AWN. Use Ston.fi.",
+      limitMeta: "Buy cap",
+      limitLoadFail: "Could not read on-chain buy limit — buy carefully.",
+      buyConfirmTitle: "Confirm before Ston.fi",
+      buyConfirmBody:
+        "Current limit {pct}: stay under ~{maxTon} (max ~{maxAwn} per tx).",
+      buyConfirmWarn:
+        "Ston.fi validates before the swap. Stay under the cap to avoid failed trades.",
     },
     claim: {
       eyebrow: "Weekly weighted claim",
@@ -539,7 +580,7 @@ export const translations: Record<Lang, Dict> = {
       siegeSub: "Neon vertical shooter · ships & upgrades",
       runSub: "Platformer · gold + $AWN coins (~14%)",
       economyHint:
-        "Game-mined $AWN are held pending. Only the owner activates the hidden claim; settlement comes from the claim pool — not free mint.",
+        "Mined $AWN (≥100) queue to the claim pool. On-chain settlement = Owner BatchTransfer — not free mint.",
       runLede: "Run, jump, collect. You are the $AWN logo.",
       starterHint: "First play: +10 spendable $AWN for mushroom, flower, star, leaf.",
       powerShop: "Mario-like power-ups",
@@ -550,7 +591,12 @@ export const translations: Record<Lang, Dict> = {
       minedPending: "Mined pending",
       gold: "Gold",
       minedPendingHint:
-        "Neon Siege + AWN Run share one mined balance. At claim they settle from the pool — not minted.",
+        "Neon Siege + AWN Run share one mined balance. At ≥100 $AWN you can claim toward the claim pool.",
+      claimMined: "Claim → claim pool",
+      claimNeedMore: "Need ≥{n} mined $AWN",
+      claimNeedWallet: "Connect wallet to claim",
+      claimQueued:
+        "Queued {amount} $AWN for claim-pool settlement (Owner BatchTransfer).",
       ownerClaim: "Owner · mined claim queue (hidden)",
       ownerClaimHint:
         "PIN OWNER. Queue all mined $AWN for later claim-pool settlement (BatchTransfer) — does not gift on-chain tokens.",
@@ -618,10 +664,10 @@ export const translations: Record<Lang, Dict> = {
       p1b3: "Blacklist for abusive wallets",
       p2Title: "2 · DEX limits",
       p2Body: "Anti-whale caps on buys and sells vs pool and possession.",
-      p2b1: "Buy max 0.5% of pool AWN balance",
-      p2b2: "Sell = min(0.5% pool, 0.5% of your holdings)",
-      p2b3: "Over-limit transfers are rejected",
-      p3Title: "3 · 3% sell tax",
+      p2b1: "Buy max = % of DEX vault AWN balance (on-chain)",
+      p2b2: "Sell = min(% pool, % of your holdings) when sells are ON",
+      p2b3: "On DeDust over limit: TON stays in the pool (no auto refund)",
+      p3Title: "3 · Sell tax",
       p3Body: "Each sell to the pool keeps 3% as $AWN tax.",
       p3b1: "Tax accrues in pendingTaxJettons",
       p3b2: "Owner SweepTax → Keeper",
@@ -699,12 +745,24 @@ export const translations: Record<Lang, Dict> = {
     },
     home: {
       eyebrow: "Лайв фид · mock DEX",
-      buy: "Купить",
-      sell: "Продать",
+      buy: "Купить на Ston.fi",
+      sell: "Продать на Ston.fi",
       network: "Сеть",
       minter: "Минтер",
       rpc: "RPC",
-      hint: "Локальный mock-график (2.5с). Позже DeDust/STON.fi. Купить/Продать — explorer.",
+      hint: "Buy/Sell открывают Ston.fi (TON↔$AWN). Не превышайте max buy — Ston.fi отклоняет раньше; избегайте DeDust bounce.",
+      limitTitle: "Ончейн лимит buy",
+      limitBody:
+        "Макс. за своп ≈ {pct} AWN vault → около {maxTon} (≤ {maxAwn}). Предпочитайте Ston.fi: отказ до transfer.",
+      limitDanger:
+        "На DeDust сверх лимита: TON в пуле (bounce 10374), без $AWN. Используйте Ston.fi.",
+      limitMeta: "Buy cap",
+      limitLoadFail: "Не удалось прочитать лимит buy — покупайте осторожно.",
+      buyConfirmTitle: "Подтвердите перед Ston.fi",
+      buyConfirmBody:
+        "Текущий лимит {pct}: держитесь ниже ~{maxTon} (макс. ~{maxAwn} за tx).",
+      buyConfirmWarn:
+        "Ston.fi проверяет до свопа. Держитесь ниже капа, чтобы не получить отказ.",
     },
     claim: {
       eyebrow: "Еженедельный взвешенный клейм",
@@ -757,7 +815,7 @@ export const translations: Record<Lang, Dict> = {
       siegeSub: "Вертикальный шутер · корабли и апгрейды",
       runSub: "Платформер · золото + $AWN (~14%)",
       economyHint:
-        "Добытые в играх $AWN удерживаются (pending). Только owner активирует скрытый claim; settlement из claim pool — не бесплатный минт.",
+        "Mined $AWN (≥100) в очередь claim pool. Settlement on-chain = Owner BatchTransfer — не бесплатный минт.",
       runLede: "Беги, прыгай, собирай. Игрок — логотип $AWN.",
       starterHint: "Первый запуск: +10 spendable $AWN на гриб, цветок, звезду, лист.",
       powerShop: "Пауэр-апы как в Mario",
@@ -768,7 +826,12 @@ export const translations: Record<Lang, Dict> = {
       minedPending: "Mined в ожидании",
       gold: "Золото",
       minedPendingHint:
-        "Neon Siege + AWN Run делят один mined-баланс. При claim — обмен из пула, не минт.",
+        "Neon Siege + AWN Run делят mined-баланс. При ≥100 $AWN можно claim в claim pool.",
+      claimMined: "Claim → claim pool",
+      claimNeedMore: "Нужно ≥{n} mined $AWN",
+      claimNeedWallet: "Подключите кошелёк для claim",
+      claimQueued:
+        "В очередь {amount} $AWN для settlement из claim pool (Owner BatchTransfer).",
       ownerClaim: "Owner · очередь mined claim (скрыто)",
       ownerClaimHint:
         "PIN OWNER. В очередь весь mined $AWN для позднего settlement из claim pool (BatchTransfer) — не дарит on-chain токены.",
@@ -836,10 +899,10 @@ export const translations: Record<Lang, Dict> = {
       p1b3: "Blacklist для злоупотреблений",
       p2Title: "2 · Лимиты DEX",
       p2Body: "Анти-whale: потолки buy/sell по пулу и possession.",
-      p2b1: "Buy max 0,5% AWN в пуле",
-      p2b2: "Sell = min(0,5% пула, 0,5% вашего баланса)",
-      p2b3: "Сверх лимита tx отклоняется",
-      p3Title: "3 · Sell tax 3%",
+      p2b1: "Buy max = % AWN в DEX vault (on-chain)",
+      p2b2: "Sell = min(% пула, % вашего баланса) когда sells ON",
+      p2b3: "На DeDust сверх лимита: TON остаётся в пуле (без автовозврата)",
+      p3Title: "3 · Sell tax",
       p3Body: "При продаже в пул 3% остаётся как tax в $AWN.",
       p3b1: "Tax в pendingTaxJettons",
       p3b2: "Owner SweepTax → Keeper",
@@ -917,12 +980,24 @@ export const translations: Record<Lang, Dict> = {
     },
     home: {
       eyebrow: "实时行情 · 模拟 DEX",
-      buy: "买入",
-      sell: "卖出",
+      buy: "在 Ston.fi 买入",
+      sell: "在 Ston.fi 卖出",
       network: "网络",
       minter: "铸造合约",
       rpc: "RPC",
-      hint: "本地模拟图表（2.5秒刷新）。稍后可接 DeDust/STON.fi。买卖打开浏览器。",
+      hint: "买入/卖出打开 Ston.fi（TON↔$AWN）。勿超过链上 max buy — Ston.fi 会提前失败；避免 DeDust 滞留 TON。",
+      limitTitle: "链上买入限额",
+      limitBody:
+        "单笔上限 ≈ vault AWN 的 {pct} → 约 {maxTon}（≤ {maxAwn}）。请优先 Ston.fi：在转账前失败。",
+      limitDanger:
+        "DeDust 超限：TON 留在池中（bounce 10374）且无 $AWN。请用 Ston.fi。",
+      limitMeta: "Buy cap",
+      limitLoadFail: "无法读取链上买入限额 — 请谨慎购买。",
+      buyConfirmTitle: "打开 Ston.fi 前确认",
+      buyConfirmBody:
+        "当前限额 {pct}：请保持在 ~{maxTon} 以下（每笔最多 ~{maxAwn}）。",
+      buyConfirmWarn:
+        "Ston.fi 在成交前校验。请保持在限额内以免交易失败。",
     },
     claim: {
       eyebrow: "每周加权领取",
@@ -971,7 +1046,7 @@ export const translations: Record<Lang, Dict> = {
       siegeSub: "霓虹竖版射击 · 战机与升级",
       runSub: "平台跑酷 · 金币 + $AWN（约 14%）",
       economyHint:
-        "游戏挖到的 $AWN 为待领取持有。仅 owner 可激活隐藏领取；结算来自领取池 — 非免费铸造。",
+        "已挖 $AWN（≥100）进入领取池队列。链上结算 = Owner BatchTransfer — 非免费铸造。",
       runLede: "奔跑跳跃收集。玩家角色是 $AWN Logo。",
       starterHint: "首次游戏：+10 可花费 $AWN，用于蘑菇、火花、星星、叶子。",
       powerShop: "马里奥风格道具",
@@ -982,7 +1057,11 @@ export const translations: Record<Lang, Dict> = {
       minedPending: "已挖待领",
       gold: "金币",
       minedPendingHint:
-        "Neon Siege 与 AWN Run 共用同一已挖余额。领取时从池兑换，不铸造。",
+        "Neon Siege 与 AWN Run 共用已挖余额。达到 ≥100 $AWN 可向领取池领取。",
+      claimMined: "领取 → 领取池",
+      claimNeedMore: "需要 ≥{n} 已挖 $AWN",
+      claimNeedWallet: "连接钱包后领取",
+      claimQueued: "已将 {amount} $AWN 排队，等待领取池结算（Owner BatchTransfer）。",
       ownerClaim: "Owner · 已挖领取队列（隐藏）",
       ownerClaimHint:
         "PIN 输入 OWNER。将全部已挖 $AWN 排队，供日后从领取池 BatchTransfer 结算 — 不会赠送链上代币。",
@@ -1050,10 +1129,10 @@ export const translations: Record<Lang, Dict> = {
       p1b3: "滥用地址可进黑名单",
       p2Title: "2 · DEX 限额",
       p2Body: "防巨鲸：买卖相对池与持仓设上限。",
-      p2b1: "买入最多为池内 AWN 的 0.5%",
-      p2b2: "卖出 = min(池 0.5%, 持仓 0.5%)",
-      p2b3: "超限交易会被拒绝",
-      p3Title: "3 · 卖出税 3%",
+      p2b1: "买入上限 = DEX vault AWN 的链上 %",
+      p2b2: "卖出开启后 = min(池 %, 持仓 %)",
+      p2b3: "DeDust 超限：TON 留在池中（无自动退款）",
+      p3Title: "3 · 卖出税",
       p3Body: "向池卖出时保留 3% 为 $AWN 税。",
       p3b1: "税累计在 pendingTaxJettons",
       p3b2: "Owner SweepTax → Keeper",

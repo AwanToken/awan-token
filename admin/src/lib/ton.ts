@@ -14,6 +14,8 @@ const OP = {
   EnableTrading: 1455545190,
   SetSellEnabled: 3304390616,
   SetDexLimitsEnabled: 2892774684,
+  SetBuyLimitBp: 589831199,
+  SetSellLimitBp: 790228406,
   SetBlacklist: 2072896655,
   PushWalletConfig: 677324105,
   DepositTreasury: 1591581524,
@@ -66,6 +68,22 @@ export function bodySetSell(enabled: boolean): Cell {
 
 export function bodyDexLimits(enabled: boolean): Cell {
   return storeOp(OP.SetDexLimitsEnabled).storeBit(enabled).endCell();
+}
+
+/** Owner-only: max buy per tx as bp of vault JW AWN (1..10000). */
+export function bodySetBuyLimitBp(bp: number): Cell {
+  if (!Number.isInteger(bp) || bp <= 0 || bp > 10_000) {
+    throw new Error("Buy limit bp must be 1..10000");
+  }
+  return storeOp(OP.SetBuyLimitBp).storeUint(bp, 16).endCell();
+}
+
+/** Owner-only: max sell per tx as bp of pool AWN (1..10000). */
+export function bodySetSellLimitBp(bp: number): Cell {
+  if (!Number.isInteger(bp) || bp <= 0 || bp > 10_000) {
+    throw new Error("Sell limit bp must be 1..10000");
+  }
+  return storeOp(OP.SetSellLimitBp).storeUint(bp, 16).endCell();
 }
 
 export function bodyBlacklist(account: string, blocked: boolean): Cell {
@@ -150,6 +168,10 @@ export type LiveState = {
   isSellEnabled: boolean;
   isDexLimitsEnabled: boolean;
   dexPool: string | null;
+  maxBuyLimitBp: number;
+  maxSellLimitBp: number;
+  sellTaxBp: number;
+  poolJettonBalance: bigint;
   treasury: bigint;
   pendingTaxJettons: bigint;
   totalSupply: bigint;
@@ -185,12 +207,12 @@ export async function fetchLiveState(): Promise<LiveState> {
   const isSellEnabled = tr.readBoolean();
   const isDexLimitsEnabled = tr.readBoolean();
   const dexPool = tr.readAddressOpt();
-  tr.readNumber(); // maxBuyLimitBp
-  tr.readNumber(); // maxSellLimitBp
+  const maxBuyLimitBp = Number(tr.readNumber());
+  const maxSellLimitBp = Number(tr.readNumber());
   tr.readNumber(); // possessionLimitBp
-  tr.readNumber(); // sellTaxBp
+  const sellTaxBp = Number(tr.readNumber());
   tr.readBigNumber(); // totalSupply
-  tr.readBigNumber(); // poolJettonBalance
+  const poolJettonBalance = tr.readBigNumber();
   tr.readBigNumber(); // maxBatchTransferAmount
   tr.readAddress(); // admin
 
@@ -220,6 +242,10 @@ export async function fetchLiveState(): Promise<LiveState> {
     isSellEnabled,
     isDexLimitsEnabled,
     dexPool: dexPool ? dexPool.toString() : null,
+    maxBuyLimitBp,
+    maxSellLimitBp,
+    sellTaxBp,
+    poolJettonBalance,
     treasury,
     pendingTaxJettons,
     totalSupply,
