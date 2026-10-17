@@ -7,6 +7,10 @@ interface ImportMetaEnv {
   readonly VITE_TONAPI?: string;
   readonly VITE_TREASURY_OR_KEEPER?: string;
   readonly VITE_MANIFEST_URL?: string;
+  readonly VITE_HOLDERS_ENDPOINT?: string;
+  readonly VITE_MINED_QUEUE_ENDPOINT?: string;
+  readonly VITE_STON_FI_BUY_URL?: string;
+  readonly VITE_STON_FI_SELL_URL?: string;
 }
 
 interface ImportMeta {
@@ -17,6 +21,8 @@ interface TelegramWebApp {
   ready: () => void;
   expand: () => void;
   close: () => void;
+  setHeaderColor?: (color: string) => void;
+  setBackgroundColor?: (color: string) => void;
   MainButton: {
     text: string;
     show: () => void;

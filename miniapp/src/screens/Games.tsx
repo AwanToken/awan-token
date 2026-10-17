@@ -13,12 +13,23 @@ import {
   claimMinedToPool,
   ensureStarterGrant,
   getMinedPending,
+  getPowerCostAwn,
+  hasUsedFirstAwnPowerToday,
   loadEco,
   type RunPowerId,
 } from "../lib/gameEconomy";
+import {
+  RUN_LIFE_PRICE_TON,
+  canBuyRunLife,
+  grantPurchasedRunLife,
+  loadRunLives,
+  purchasesLeftToday,
+} from "../lib/runLives";
 import { haptic } from "../lib/telegram";
 import { toNano } from "../lib/ton";
 import { UPGRADES, loadOwned, markOwned, type UpgradeId } from "../lib/upgrades";
+import { RUN_LEVELS } from "../game/run/runLevels";
+import { drawAwnHero } from "../game/run/awnHeroArt";
 
 const UPGRADE_ICON: Record<string, string> = {
   gun: "⚔",
@@ -30,6 +41,9 @@ const UPGRADE_ICON: Record<string, string> = {
 
 /** Highest-tier craft in the roster (last entry / Iron Falcon). */
 const BEST_SHIP = SHIPS[SHIPS.length - 1]!;
+
+/** Shared presentation tile size for both game picks. */
+const GP_ART = 112;
 
 type Props = {
   selected: ShipId;
@@ -61,7 +75,7 @@ function ShipPreview({ id, active }: { id: ShipId; active: boolean }) {
   return <canvas ref={ref} width={96} height={96} className="ship-preview" />;
 }
 
-/** Large hero art of the best aircraft for the Neon Siege game card. */
+/** Animated Neon Siege craft for the hub card (same tile size as RunAwan). */
 function SiegeHeroIcon() {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -69,24 +83,61 @@ function SiegeHeroIcon() {
     if (!c) return;
     const ctx = c.getContext("2d");
     if (!ctx) return;
-    const { width: w, height: h } = c;
-    ctx.clearRect(0, 0, w, h);
-    const bg = ctx.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w * 0.55);
-    bg.addColorStop(0, "rgba(125,249,255,0.35)");
-    bg.addColorStop(0.45, "rgba(255,43,214,0.18)");
-    bg.addColorStop(1, "rgba(8,2,18,0.9)");
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, w, h);
-    drawShip(ctx, BEST_SHIP, w / 2, h / 2 + 4, 2.85, "up");
+    let raf = 0;
+    const t0 = performance.now();
+    const paint = (now: number) => {
+      const t = (now - t0) / 1000;
+      const { width: w, height: h } = c;
+      ctx.clearRect(0, 0, w, h);
+      const pulse = 0.5 + 0.5 * Math.sin(t * 2.4);
+      const bg = ctx.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w * 0.58);
+      bg.addColorStop(0, `rgba(125,249,255,${0.28 + pulse * 0.18})`);
+      bg.addColorStop(0.45, "rgba(255,43,214,0.2)");
+      bg.addColorStop(1, "rgba(8,2,18,0.92)");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+      // soft engine trail
+      ctx.fillStyle = `rgba(125,249,255,${0.12 + pulse * 0.2})`;
+      ctx.beginPath();
+      ctx.ellipse(w / 2, h * 0.78, 18 + pulse * 6, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const bob = Math.sin(t * 3) * 3;
+      drawShip(ctx, BEST_SHIP, w / 2, h / 2 + 2 + bob, 2.9, "up");
+      raf = requestAnimationFrame(paint);
+    };
+    raf = requestAnimationFrame(paint);
+    return () => cancelAnimationFrame(raf);
   }, []);
   return (
     <canvas
       ref={ref}
-      width={112}
-      height={112}
-      className="gp-siege-art"
+      width={GP_ART}
+      height={GP_ART}
+      className="gp-game-art"
       aria-hidden
     />
+  );
+}
+
+/** Animated RunAwan hero (logo-man vibe) — no circular logo badge. */
+function RunHeroIcon({ className = "gp-game-art" }: { className?: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const paint = (now: number) => {
+      drawAwnHero(ctx, c.width, c.height, { t: (now - t0) / 1000, faces: 1 });
+      raf = requestAnimationFrame(paint);
+    };
+    raf = requestAnimationFrame(paint);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return (
+    <canvas ref={ref} width={GP_ART} height={GP_ART} className={className} aria-hidden />
   );
 }
 
@@ -165,6 +216,7 @@ function EcoWalletStrip({
             ? t.games.claimMined
             : t.games.claimNeedMore.replace("{n}", String(MINED_CLAIM_THRESHOLD))}
       </button>
+      {ready && wallet && <p className="hint">{t.games.ownerSettle}</p>}
       <p className="hint">{t.games.economyHint}</p>
       {claimMsg && <p className="hint glow-cyan">{claimMsg}</p>}
     </div>
@@ -186,18 +238,22 @@ export function GamesScreen({
   const [tonConnectUI] = useTonConnectUI();
   const [mode, setMode] = useState<"hub" | "siege" | "run">("hub");
   const [eco, setEco] = useState(() => ensureStarterGrant(wallet));
+  const [livesState, setLivesState] = useState(() => loadRunLives(wallet));
   const [msg, setMsg] = useState("");
   const [owned, setOwned] = useState<UpgradeId[]>(() => loadOwned(wallet));
   const [busyUpgrade, setBusyUpgrade] = useState<UpgradeId | null>(null);
+  const [busyLife, setBusyLife] = useState(false);
   const { isSiegeComing, isRunComing } = useAppStatus();
 
   useEffect(() => {
     setEco(ensureStarterGrant(wallet));
     setOwned(loadOwned(wallet));
+    setLivesState(loadRunLives(wallet));
   }, [wallet, ecoTick]);
 
   function refreshEco() {
     setEco(loadEco(wallet));
+    setLivesState(loadRunLives(wallet));
   }
 
   function buy(id: RunPowerId) {
@@ -236,6 +292,42 @@ export function GamesScreen({
     }
   }
 
+  async function buyRunLife() {
+    if (!wallet) {
+      await tonConnectUI.openModal();
+      return;
+    }
+    if (!canBuyRunLife(wallet)) {
+      setMsg(t.games.livesDailyCap);
+      return;
+    }
+    setBusyLife(true);
+    setMsg("");
+    try {
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 300,
+        messages: [
+          {
+            address: TREASURY_OR_KEEPER,
+            amount: toNano(RUN_LIFE_PRICE_TON).toString(),
+          },
+        ],
+      });
+      const r = grantPurchasedRunLife(wallet);
+      if (!r.ok) {
+        setMsg(t.games.livesDailyCap);
+        return;
+      }
+      setLivesState(r.state);
+      haptic("medium");
+      setMsg(t.games.livesBought);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "…");
+    } finally {
+      setBusyLife(false);
+    }
+  }
+
   if (mode === "hub") {
     return (
       <section className="panel games-hub fade-in">
@@ -264,7 +356,7 @@ export function GamesScreen({
           )}
           <div className="gp-art-row">
             <SiegeHeroIcon />
-            <div>
+            <div className="gp-copy">
               <span className="gp-title">AWN: Neon Siege</span>
               <span className="gp-sub">{t.games.siegeSub}</span>
               <span className="gp-ship-tag">
@@ -285,10 +377,13 @@ export function GamesScreen({
           {isRunComing && (
             <span className="coming-badge">{t.games.comingSoonBadge}</span>
           )}
-          <img src="/awn-logo.png" alt="" className="gp-logo" />
-          <div>
-            <span className="gp-title">AWN Run</span>
-            <span className="gp-sub">{t.games.runSub}</span>
+          <div className="gp-art-row">
+            <RunHeroIcon />
+            <div className="gp-copy">
+              <span className="gp-title">RunAwan</span>
+              <span className="gp-sub">{t.games.runSub}</span>
+              <span className="gp-ship-tag">Boss · Fiore di fuoco</span>
+            </div>
           </div>
         </button>
 
@@ -411,9 +506,9 @@ export function GamesScreen({
         ← {t.games.title}
       </button>
       <div className="run-hero">
-        <img src="/awn-logo.png" alt="$AWN" className="run-hero-logo" />
+        <RunHeroIcon className="run-hero-art" />
         <div>
-          <h2 className="panel-title">AWN Run</h2>
+          <h2 className="panel-title">RunAwan</h2>
           <p className="lede">{t.games.runLede}</p>
         </div>
       </div>
@@ -426,18 +521,52 @@ export function GamesScreen({
         onClaimed={refreshEco}
       />
       <p className="hint">{t.games.starterHint}</p>
+      <p className="hint">{t.games.runLevelsHint}</p>
+
+      <div className="run-levels-strip" aria-hidden>
+        {RUN_LEVELS.map((lv) => (
+          <span key={lv.id} className="run-level-chip" style={{ borderColor: lv.accent }}>
+            L{lv.id} {lv.boss.nameIt}
+          </span>
+        ))}
+      </div>
+
+      <h3 className="sub-title">{t.games.livesShop}</h3>
+      <p className="hint">{t.games.livesLede}</p>
+      <div className="run-lives-row">
+        <span className="run-lives-count">
+          {t.games.livesLabel}: <strong>{livesState.lives}</strong>
+          <em>
+            {" "}
+            · {purchasesLeftToday(wallet)}/10
+          </em>
+        </span>
+        <button
+          type="button"
+          className="neon-btn"
+          disabled={busyLife || !canBuyRunLife(wallet)}
+          onClick={() => void buyRunLife()}
+        >
+          {busyLife ? "…" : t.games.livesBuy}
+        </button>
+      </div>
 
       <h3 className="sub-title">{t.games.powerShop}</h3>
+      <p className="hint">{t.games.powerPickupHint}</p>
+      {!hasUsedFirstAwnPowerToday(wallet) && (
+        <p className="hint glow-cyan">{t.games.firstPowerHint}</p>
+      )}
       <div className="upgrade-cards">
         {RUN_POWERS.map((p) => {
           const have = eco.powers.includes(p.id);
+          const cost = getPowerCostAwn(wallet, p.id);
           return (
             <div key={p.id} className={`upgrade-card ${have ? "owned" : ""}`}>
               <div className="upgrade-icon">
                 {p.id === "mushroom"
                   ? "🍄"
                   : p.id === "fire_flower"
-                    ? "🌸"
+                    ? "🔥"
                     : p.id === "star"
                       ? "⭐"
                       : "🍃"}
@@ -453,7 +582,7 @@ export function GamesScreen({
                 disabled={have}
                 onClick={() => buy(p.id)}
               >
-                {have ? "OK" : `${p.costAwn} $AWN`}
+                {have ? "OK" : `${cost} $AWN`}
               </button>
             </div>
           );
@@ -465,12 +594,21 @@ export function GamesScreen({
         <button
           type="button"
           className="neon-btn buy launch-btn"
-          disabled={isRunComing}
+          disabled={isRunComing || livesState.lives < 1}
           onClick={() => {
-            if (!isRunComing) onLaunchRun();
+            if (isRunComing) return;
+            if (livesState.lives < 1) {
+              setMsg(t.games.livesNone);
+              return;
+            }
+            onLaunchRun();
           }}
         >
-          {isRunComing ? t.games.comingSoonBadge : t.games.playRun}
+          {isRunComing
+            ? t.games.comingSoonBadge
+            : livesState.lives < 1
+              ? t.games.livesNeedBuy
+              : t.games.playRun}
         </button>
       </div>
 

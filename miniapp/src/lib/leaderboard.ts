@@ -47,10 +47,55 @@ export function submitScore(entry: Omit<ScoreEntry, "at">): ScoreEntry[] {
 }
 
 /**
- * Stub for Command Deck prize events:
- * Admin batch-transfers $AWN to top wallets after a tournament window.
- * Wire via admin BatchTransfer — see miniapp README.
+ * Default $AWN prizes by rank (1-indexed). Owner can edit amounts after export
+ * before pasting into Command Deck BatchTransfer.
  */
+export const DEFAULT_PRIZE_AWN = [
+  5000, 2500, 1000, 500, 250, 150, 100, 100, 75, 75,
+];
+
+export type PrizeExportRow = {
+  rank: number;
+  wallet: string;
+  amount: number;
+  name: string;
+  score: number;
+  ship?: string;
+  at: number;
+};
+
+/**
+ * Top entries that have a wallet, with default prize amounts for BatchTransfer.
+ * Copy JSON → Command Deck «Import leaderboard JSON» → Prefill BatchTransfer.
+ */
+export function exportTopPrizeJson(
+  n = 10,
+  prizes: number[] = DEFAULT_PRIZE_AWN,
+): string {
+  const top = getTop(Math.max(n, 20));
+  const withWallet = top.filter((e) => e.wallet && e.wallet.trim().length >= 10);
+  const rows: PrizeExportRow[] = withWallet.slice(0, n).map((e, i) => {
+    const prize = prizes[i] ?? prizes[prizes.length - 1] ?? 50;
+    return {
+      rank: i + 1,
+      wallet: String(e.wallet).trim(),
+      amount: prize,
+      name: e.name,
+      score: e.score,
+      ship: e.ship,
+      at: e.at,
+    };
+  });
+  return JSON.stringify({ prizes: rows }, null, 2);
+}
+
+export function countExportableWallets(n = 10): number {
+  return getTop(Math.max(n, 20)).filter(
+    (e) => e.wallet && e.wallet.trim().length >= 10,
+  ).slice(0, n).length;
+}
+
+/** Ops note for Classifica prize settle flow. */
 export function adminPrizeNote(): string {
-  return "Prize $AWN drops are sent from Command Deck (admin BatchTransfer). This Mini App only stores local scores.";
+  return "Copia JSON top wallet → Command Deck → Import leaderboard → Prefill BatchTransfer. Premi $AWN non partono da questa Mini App.";
 }

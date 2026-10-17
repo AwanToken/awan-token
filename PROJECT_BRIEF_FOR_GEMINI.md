@@ -18,7 +18,7 @@ Use this document to understand what was built, how the smart contract works, an
 | Hosting | Vercel | Public miniapp: `https://awn-miniapp-vercel.vercel.app` |
 | Bot | Telegram | `https://t.me/AwanToken_bot/app` |
 
-Games (Neon Siege, AWN Run) mine **off-chain** `$AWN` in `localStorage`. That is **not** on-chain mint. Future settlement is meant to come from the **claim pool / owner batch**, not free mint.
+Games (Neon Siege, RunAwan) mine **off-chain** `$AWN` in `localStorage`. That is **not** on-chain mint. Future settlement is meant to come from the **claim pool / owner batch**, not free mint.
 
 ---
 
@@ -140,7 +140,7 @@ Stack: Vite, React, TonConnect UI, i18n (IT/EN/RU/ZH), Spotify + game mute dock.
 - **Trade** — mock DEX chart (UI); buy/sell links explorer for now  
 - **Wallet** — TON / $AWN balances, claim-pool membership badge, claim history (local), contract links  
 - **Claim** — cycle status, eligibility, claim CTA when window open  
-- **Games** — Neon Siege (vertical shooter) + AWN Run (platformer); economy in `localStorage`  
+- **Games** — Neon Siege (vertical shooter) + RunAwan (platformer); economy in `localStorage`  
 - **Roadmap** — in-app SC / product specs  
 - **Board / Classifica** — ranks UI  
 

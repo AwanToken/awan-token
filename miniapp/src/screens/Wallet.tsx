@@ -222,6 +222,11 @@ export function WalletScreen() {
         </span>
       </div>
 
+      <div className="earn-card dual-flows-note">
+        <p className="eyebrow">{t.wallet.dualFlowsTitle}</p>
+        <p className="hint">{t.wallet.dualFlowsBody}</p>
+      </div>
+
       <div className="meta-grid">
         <div className="meta-cell">
           <span>{t.wallet.estClaim}</span>

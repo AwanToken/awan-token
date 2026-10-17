@@ -12,10 +12,12 @@
     "go-live": "node scripts/print-botfather.mjs && node scripts/start-tunnel.mjs"
   },
   "dependencies": {
+    "@ston-fi/omniston-widget-loader": "^0.2.0",
     "@ton/core": "^0.63.1",
     "@ton/ton": "^16.3.0",
     "@tonconnect/ui-react": "^5.0.1",
     "@twa-dev/sdk": "^8.0.2",
+    "@vercel/blob": "^2.8.2",
     "buffer": "^6.0.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -24,6 +26,7 @@
   "devDependencies": {
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
+    "@vercel/node": "^24.0.2",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "~5.8.2",
     "vite": "^5.4.21"

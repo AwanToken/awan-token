@@ -6,7 +6,7 @@
  *   Player can queue at ≥ MINED_CLAIM_THRESHOLD; owner settles via BatchTransfer
  */
 
-import { MINED_CLAIM_THRESHOLD } from "../config";
+import { MINED_CLAIM_THRESHOLD, MINED_QUEUE_API_URL } from "../config";
 import type { DifficultyId } from "../game/difficulty";
 import {
   formatTelegramHandle,
@@ -38,7 +38,7 @@ export const RUN_POWERS: RunPowerDef[] = [
   {
     id: "fire_flower",
     name: "Fiore di fuoco",
-    blurb: "Spara palle di fuoco neon",
+    blurb: "Spara palle di fuoco · unico modo per ferire i boss",
     costAwn: 5,
     effect: "fireball",
   },
@@ -52,11 +52,44 @@ export const RUN_POWERS: RunPowerDef[] = [
   {
     id: "leaf",
     name: "Foglia planata",
-    blurb: "Planata lenta in aria",
+    blurb: "Planata lenta in aria (tasto potere)",
     costAwn: 3,
     effect: "glide",
   },
 ];
+
+/** First $AWN power-up of the calendar day (lobby or in-run). */
+export const RUN_FIRST_POWER_COST_AWN = 15;
+
+const firstPowerKey = (w: string | null) => `awn_run_first_power_day_${w || "guest"}`;
+
+function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** True if the wallet already used the discounted/first daily AWN power purchase. */
+export function hasUsedFirstAwnPowerToday(wallet: string | null): boolean {
+  try {
+    return localStorage.getItem(firstPowerKey(wallet)) === todayKey();
+  } catch {
+    return false;
+  }
+}
+
+function markFirstAwnPowerUsed(wallet: string | null) {
+  try {
+    localStorage.setItem(firstPowerKey(wallet), todayKey());
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Cost in spendable $AWN: first of day = 15, later = catalog price. */
+export function getPowerCostAwn(wallet: string | null, id: RunPowerId): number {
+  if (!hasUsedFirstAwnPowerToday(wallet)) return RUN_FIRST_POWER_COST_AWN;
+  return RUN_POWERS.find((p) => p.id === id)?.costAwn ?? RUN_FIRST_POWER_COST_AWN;
+}
 
 /** Chance a collectible is a rare $AWN mined token (rest = gold coin). ~14% — not trivial, not rare enough to frustrate. */
 export const AWN_TOKEN_DROP_CHANCE = 0.14;
@@ -153,14 +186,14 @@ function saveEco(wallet: string | null, eco: Eco) {
   localStorage.setItem(key(wallet), JSON.stringify(eco));
 }
 
-/** First time opening AWN Run: grant 10 spendable $AWN for powerups. */
+/** First time opening RunAwan: grant 15 spendable $AWN (covers first daily power-up). */
 export function ensureStarterGrant(wallet: string | null): Eco {
   const eco = loadEco(wallet);
   const prevTg = JSON.stringify(eco.telegram ?? null);
   withTelegram(eco);
   if (!eco.starterGranted) {
     eco.starterGranted = true;
-    eco.spendableAwn += 10;
+    eco.spendableAwn += 15;
     saveEco(wallet, eco);
   } else if (JSON.stringify(eco.telegram ?? null) !== prevTg) {
     saveEco(wallet, eco);
@@ -173,10 +206,33 @@ export function buyPower(wallet: string | null, id: RunPowerId): Eco | { error: 
   const def = RUN_POWERS.find((p) => p.id === id);
   if (!def) return { error: "Unknown" };
   if (eco.powers.includes(id)) return { error: "Owned" };
-  if (eco.spendableAwn < def.costAwn) return { error: "Insufficient $AWN" };
-  eco.spendableAwn -= def.costAwn;
+  const cost = getPowerCostAwn(wallet, id);
+  if (eco.spendableAwn < cost) return { error: "Insufficient $AWN" };
+  eco.spendableAwn -= cost;
   eco.powers.push(id);
+  markFirstAwnPowerUsed(wallet);
   saveEco(wallet, eco);
+  return eco;
+}
+
+/**
+ * In-run / pause AWN purchase: deducts spendable $AWN and unlocks the power
+ * for the wallet (same ledger as lobby shop).
+ */
+export function buyPowerInRun(
+  wallet: string | null,
+  id: RunPowerId,
+): Eco | { error: string } {
+  return buyPower(wallet, id);
+}
+
+/** After a successful 1 TON pause purchase — unlock power on the wallet ledger. */
+export function grantPowerFromTon(wallet: string | null, id: RunPowerId): Eco {
+  const eco = ensureStarterGrant(wallet);
+  if (!eco.powers.includes(id)) {
+    eco.powers.push(id);
+    saveEco(wallet, eco);
+  }
   return eco;
 }
 
@@ -194,7 +250,7 @@ export function applyRunRewards(
   return eco;
 }
 
-/** Persist mined $AWN from a Neon Siege run (same ledger as AWN Run). */
+/** Persist mined $AWN from a Neon Siege run (same ledger as RunAwan). */
 export function applySiegeKillReward(wallet: string | null, mined: number): Eco {
   if (mined <= 0) return ensureStarterGrant(wallet);
   return applyRunRewards(wallet, 0, mined, 0);
@@ -228,21 +284,42 @@ export type OwnerClaimQueue = {
 
 const OWNER_Q = "awn_owner_mined_claim_queue";
 
+function syncQueuedEntryToApi(entry: OwnerClaimQueue) {
+  try {
+    void fetch(MINED_QUEUE_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        wallet: entry.wallet,
+        minedAwn: entry.minedAwn,
+        at: entry.at,
+        telegram: entry.telegramLabel || formatTelegramHandle(entry.telegram) || undefined,
+        telegramId: entry.telegram?.id,
+      }),
+      keepalive: true,
+    });
+  } catch {
+    /* network optional — local queue still saved */
+  }
+}
+
 export function queueMinedForOwnerClaim(wallet: string): OwnerClaimQueue[] {
   const eco = withTelegram(loadEco(wallet));
   if (eco.minedAwn <= 0) return loadOwnerQueue();
   const telegram = eco.telegram ?? toTelegramIdentity(getTelegramUser());
-  const q = loadOwnerQueue();
-  q.push({
+  const entry: OwnerClaimQueue = {
     wallet,
     minedAwn: eco.minedAwn,
     at: Date.now(),
     telegram,
     telegramLabel: formatTelegramHandle(telegram) || undefined,
-  });
+  };
+  const q = loadOwnerQueue();
+  q.push(entry);
   localStorage.setItem(OWNER_Q, JSON.stringify(q.slice(-100)));
   eco.minedAwn = 0;
   saveEco(wallet, eco);
+  syncQueuedEntryToApi(entry);
   return q;
 }
 

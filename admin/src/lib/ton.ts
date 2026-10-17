@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import {
   Address,
   beginCell,
@@ -5,9 +6,10 @@ import {
   toNano,
   TupleBuilder,
   TupleReader,
+  type TupleItem,
 } from "@ton/core";
 import { TonClient } from "@ton/ton";
-import { DECIMALS, MINTER, RPC } from "../config";
+import { DECIMALS, MINTER, RPC, TONAPI_BASE } from "../config";
 
 /** Opcodes from compiled AwanToken */
 const OP = {
@@ -16,6 +18,8 @@ const OP = {
   SetDexLimitsEnabled: 2892774684,
   SetBuyLimitBp: 589831199,
   SetSellLimitBp: 790228406,
+  SetMaxSellAbsolute: 875762341,
+  SetSellTaxBp: 1144337993,
   SetBlacklist: 2072896655,
   PushWalletConfig: 677324105,
   DepositTreasury: 1591581524,
@@ -84,6 +88,29 @@ export function bodySetSellLimitBp(bp: number): Cell {
     throw new Error("Sell limit bp must be 1..10000");
   }
   return storeOp(OP.SetSellLimitBp).storeUint(bp, 16).endCell();
+}
+
+/**
+ * Owner-only: hard ceiling of $AWN sold into pool per tx (raw 9-dec units).
+ * Pass 0n to disable the absolute cap (bp / possession limits still apply).
+ * Requires redeployed minter that includes SetMaxSellAbsolute.
+ */
+export function bodySetMaxSellAbsolute(rawAmount: bigint): Cell {
+  if (rawAmount < 0n) {
+    throw new Error("Absolute sell amount must be >= 0");
+  }
+  return storeOp(OP.SetMaxSellAbsolute).storeCoins(rawAmount).endCell();
+}
+
+/**
+ * Owner-only: sell tax in bp of sold $AWN (0..1000 = 0..10%).
+ * Tax lands on minter JW → keeper swaps to TON → DepositTreasury (treasury funding).
+ */
+export function bodySetSellTaxBp(bp: number): Cell {
+  if (!Number.isInteger(bp) || bp < 0 || bp > 1000) {
+    throw new Error("Sell tax bp must be integer 0..1000");
+  }
+  return storeOp(OP.SetSellTaxBp).storeUint(bp, 16).endCell();
 }
 
 export function bodyBlacklist(account: string, blocked: boolean): Cell {
@@ -189,20 +216,132 @@ function asReader(stack: unknown): TupleReader {
     return new TupleReader(stack as never);
   }
   if (Array.isArray(stack)) return new TupleReader(stack as never);
-  // Some clients nest as { stack: TupleReader | items }
   const nested = stack && typeof stack === "object" ? (stack as { stack?: unknown }).stack : undefined;
   if (nested instanceof TupleReader) return nested;
   if (nested) return asReader(nested);
   throw new Error("items is not iterable");
 }
 
-export async function fetchLiveState(): Promise<LiveState> {
-  const c = client();
-  const minter = Address.parse(MINTER);
+type TonapiStackItem = {
+  type: string;
+  num?: string;
+  cell?: string;
+  slice?: string;
+};
 
-  const trading = await c.runMethod(minter, "get_trading_state");
-  const tr = asReader(trading.stack);
-  // AwanConfig: bools, dexPool, buy/sell/possession bp, sellTax, supply, poolBal, maxBatch, admin
+type TonapiMethodResult = {
+  success: boolean;
+  exit_code: number;
+  stack: TonapiStackItem[];
+};
+
+function toFriendly(addr: string | Address): string {
+  const a = typeof addr === "string" ? Address.parse(addr) : addr;
+  return a.toString({ urlSafe: true, bounceable: true, testOnly: false });
+}
+
+function hexToCell(hex: string): Cell {
+  const clean = hex.replace(/^0x/i, "");
+  return Cell.fromBoc(Buffer.from(clean, "hex"))[0]!;
+}
+
+/** tonapi returns hex ints like "0x1" / "-0x1" — BigInt("-0x1") throws in JS. */
+function parseTonapiNum(num: string): bigint {
+  const s = num.trim();
+  if (/^-0x/i.test(s)) return -BigInt(s.slice(1));
+  return BigInt(s);
+}
+
+function tonapiStackToTuple(stack: TonapiStackItem[]): TupleItem[] {
+  return stack.map((item): TupleItem => {
+    if (item.type === "num" && item.num != null) {
+      return { type: "int", value: parseTonapiNum(item.num) };
+    }
+    if (item.type === "null") {
+      return { type: "null" };
+    }
+    if ((item.type === "cell" || item.type === "slice") && (item.cell || item.slice)) {
+      const cell = hexToCell((item.cell || item.slice)!);
+      return { type: "slice", cell };
+    }
+    throw new Error(`Unsupported tonapi stack item: ${item.type}`);
+  });
+}
+
+async function runMethodTonapi(
+  account: string,
+  method: string,
+  addressArg?: string,
+): Promise<TupleReader> {
+  const friendly = toFriendly(account);
+  const url = `${TONAPI_BASE}/blockchain/accounts/${encodeURIComponent(friendly)}/methods/${encodeURIComponent(method)}`;
+  const init: RequestInit | undefined = addressArg
+    ? {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ args: [{ type: "slice", value: toFriendly(addressArg) }] }),
+      }
+    : { headers: { Accept: "application/json" } };
+  const res = await fetch(url, init);
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`tonapi ${res.status}: ${text.slice(0, 160) || res.statusText}`);
+  }
+  const data = (await res.json()) as TonapiMethodResult;
+  if (!data.success && data.exit_code !== 0) {
+    throw new Error(`tonapi ${method} exit ${data.exit_code}`);
+  }
+  return new TupleReader(tonapiStackToTuple(data.stack ?? []));
+}
+
+/** Browser-safe get-method: TonAPI first (toncenter CORS/429), then JSON-RPC. */
+async function runGetMethod(
+  account: string,
+  method: string,
+  addressArg?: string,
+): Promise<TupleReader> {
+  try {
+    return await runMethodTonapi(account, method, addressArg);
+  } catch (tonapiErr) {
+    try {
+      const c = client();
+      const tb = addressArg ? new TupleBuilder() : undefined;
+      if (tb && addressArg) tb.writeAddress(Address.parse(addressArg));
+      const res = await c.runMethod(
+        Address.parse(account),
+        method,
+        tb?.build(),
+      );
+      return asReader(res.stack);
+    } catch (rpcErr) {
+      const a = tonapiErr instanceof Error ? tonapiErr.message : String(tonapiErr);
+      const b = rpcErr instanceof Error ? rpcErr.message : String(rpcErr);
+      throw new Error(`${a} · ${b}`);
+    }
+  }
+}
+
+/** TonAPI account balance in nanotons (for Keeper wallet display). */
+export async function fetchAccountTonBalance(address: string): Promise<bigint> {
+  const url = `${TONAPI_BASE}/accounts/${encodeURIComponent(address)}`;
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error(`tonapi account ${res.status}`);
+  const data = (await res.json()) as { balance?: number | string };
+  return BigInt(data.balance ?? 0);
+}
+
+export function fromNanoTon(n: bigint): string {
+  const neg = n < 0n;
+  const v = neg ? -n : n;
+  const whole = v / 1_000_000_000n;
+  const frac = v % 1_000_000_000n;
+  const fracStr = frac.toString().padStart(9, "0").replace(/0+$/, "");
+  const s = fracStr ? `${whole}.${fracStr}` : whole.toString();
+  return neg ? `-${s}` : s;
+}
+
+export async function fetchLiveState(): Promise<LiveState> {
+  const tr = await runGetMethod(MINTER, "get_trading_state");
   const isTradingEnabled = tr.readBoolean();
   const isSellEnabled = tr.readBoolean();
   const isDexLimitsEnabled = tr.readBoolean();
@@ -211,31 +350,32 @@ export async function fetchLiveState(): Promise<LiveState> {
   const maxSellLimitBp = Number(tr.readNumber());
   tr.readNumber(); // possessionLimitBp
   const sellTaxBp = Number(tr.readNumber());
-  tr.readBigNumber(); // totalSupply
+  tr.readBigNumber(); // totalSupply (also in get_jetton_data)
   const poolJettonBalance = tr.readBigNumber();
   tr.readBigNumber(); // maxBatchTransferAmount
   tr.readAddress(); // admin
+  // Skip optional trailing maxSellAbsolute if present (deck does not surface it).
+  try {
+    tr.readBigNumber();
+  } catch {
+    /* pre-redeploy minters omit the field */
+  }
 
-  const claim = await c.runMethod(minter, "get_claim_status");
-  const cr = asReader(claim.stack);
+  const cr = await runGetMethod(MINTER, "get_claim_status");
   const cycleId = Number(cr.readNumber());
   const cycleStart = Number(cr.readNumber());
   const claimWindowOpen = cr.readBoolean();
   const claimWindowEnd = Number(cr.readNumber());
-  cr.readBigNumber(); // treasury in claim status
+  cr.readBigNumber(); // treasury
   cr.readBigNumber(); // snapshot
   cr.readBoolean(); // sells
   const claimProgramActive = cr.readBoolean();
 
-  const treas = await c.runMethod(minter, "get_treasury_balance");
-  const treasury = asReader(treas.stack).readBigNumber();
-
-  const tax = await c.runMethod(minter, "get_pending_tax_jettons");
-  const pendingTaxJettons = asReader(tax.stack).readBigNumber();
-
-  const jd = await c.runMethod(minter, "get_jetton_data");
-  const jr = asReader(jd.stack);
-  const totalSupply = jr.readBigNumber();
+  const treasury = (await runGetMethod(MINTER, "get_treasury_balance")).readBigNumber();
+  const pendingTaxJettons = (
+    await runGetMethod(MINTER, "get_pending_tax_jettons")
+  ).readBigNumber();
+  const totalSupply = (await runGetMethod(MINTER, "get_jetton_data")).readBigNumber();
 
   return {
     isTradingEnabled,
@@ -258,11 +398,7 @@ export async function fetchLiveState(): Promise<LiveState> {
 }
 
 export async function fetchHolder(addr: string) {
-  const c = client();
-  const tb = new TupleBuilder();
-  tb.writeAddress(Address.parse(addr));
-  const res = await c.runMethod(Address.parse(MINTER), "get_holder_info", tb.build());
-  const r = asReader(res.stack);
+  const r = await runGetMethod(MINTER, "get_holder_info", addr);
   return {
     balance: r.readBigNumber(),
     lastUpdate: Number(r.readNumber()),
@@ -273,11 +409,7 @@ export async function fetchHolder(addr: string) {
 }
 
 export async function isBlacklisted(addr: string) {
-  const c = client();
-  const tb = new TupleBuilder();
-  tb.writeAddress(Address.parse(addr));
-  const res = await c.runMethod(Address.parse(MINTER), "is_blacklisted", tb.build());
-  return asReader(res.stack).readBoolean();
+  return (await runGetMethod(MINTER, "is_blacklisted", addr)).readBoolean();
 }
 
 export { toNano, Address, Cell };

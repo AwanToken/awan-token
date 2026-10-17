@@ -22,15 +22,16 @@ function ac(): AudioContext {
   if (!ctx) {
     ctx = new AudioContext();
     master = ctx.createGain();
-    master.gain.value = muted ? 0 : 0.55;
+    // Softer defaults — previous levels felt harsh in Telegram Mini App.
+    master.gain.value = muted ? 0 : 0.28;
     master.connect(ctx.destination);
 
     musicGain = ctx.createGain();
-    musicGain.gain.value = 0.22;
+    musicGain.gain.value = 0.08;
     musicGain.connect(master);
 
     sfxGain = ctx.createGain();
-    sfxGain.gain.value = 0.35;
+    sfxGain.gain.value = 0.18;
     sfxGain.connect(master);
   }
   return ctx;

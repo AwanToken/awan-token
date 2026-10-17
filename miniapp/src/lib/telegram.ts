@@ -23,6 +23,12 @@ export function initTelegram() {
   try {
     wa.ready();
     wa.expand();
+    // Lock chrome to dark neon — Telegram light theme was bleeding pink/white into the UI
+    const dark = "#070312";
+    wa.setHeaderColor?.(dark);
+    wa.setBackgroundColor?.(dark);
+    document.documentElement.style.backgroundColor = dark;
+    document.body.style.backgroundColor = dark;
   } catch {
     /* browser preview without Telegram */
   }

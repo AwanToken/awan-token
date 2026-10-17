@@ -11,10 +11,10 @@ import "./index.css";
  * Hosted on the miniapp Vercel origin (Netlify awantoken.netlify.app is dead/404).
  */
 const VERCEL_ORIGIN = "https://awn-miniapp-vercel.vercel.app";
-/** Live HTTPS manifest (Netlify is 404). Prefer command-deck; tonconnect-manifest is always on prod. */
+/** Live HTTPS manifest (Netlify is 404). command-deck-manifest is on Vercel prod. */
 const manifestUrl =
   (import.meta.env.VITE_TONCONNECT_MANIFEST as string | undefined) ||
-  `${VERCEL_ORIGIN}/tonconnect-manifest.json`;
+  `${VERCEL_ORIGIN}/command-deck-manifest.json`;
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

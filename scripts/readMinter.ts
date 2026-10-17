@@ -55,6 +55,7 @@ async function main() {
         maxSellLimitBp: Number(trading.maxSellLimitBp),
         possessionLimitBp: Number(trading.possessionLimitBp),
         sellTaxBp: Number(trading.sellTaxBp),
+        maxSellAbsolute: trading.maxSellAbsolute.toString(),
         poolJettonBalance: trading.poolJettonBalance.toString(),
     });
     console.log("claim:", {

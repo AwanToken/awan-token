@@ -3,7 +3,7 @@
 // =============================================================================
 // Jetton TEP-74/TEP-89 con:
 //  - switch di lancio, blacklist, limiti buy/sell DEX
-//  - limiti DEX: % del saldo $AWN in pool (chart) + % del possesso wallet (anti dump bag)
+//  - limiti DEX: % pool + % possesso wallet + tetto assoluto $AWN/tx (maxSellAbsolute)
 //  - tassa vendita 3% in jetton → conversione keeper → tesoreria TON/GRAM
 //  - batch airdrop (max 150 dest., tetto default 150_000 $AWN)
 //  - claim settimanale ponderato + finestra 24h + penalità anti-sniper 50%
@@ -22,6 +22,8 @@ const DEFAULT_MAX_BUY_BP: Int = 50;           // 0.5% of pool
 const DEFAULT_MAX_SELL_BP: Int = 50;          // 0.5% of pool
 /// Max sell per tx = this bp of the seller's own wallet balance (anti full-bag dump).
 const DEFAULT_POSSESSION_LIMIT_BP: Int = 50;  // 0.5% of possession
+/// Hard ceiling in raw units (9 decimals). 0 = disabled (bp limits only).
+const DEFAULT_MAX_SELL_ABSOLUTE: Int = 0;
 const DEFAULT_SELL_TAX_BP: Int = 300;         // 3%
 const CLAIM_PERIOD_SECONDS: Int = 604800;     // 7 days
 const CLAIM_WINDOW_SECONDS: Int = 86400;      // 24 hours claim window
@@ -61,6 +63,8 @@ struct AwanConfig {
     maxBatchTransferAmount: Int as coins;
     /// Token admin (minter owner) — may move tokens before public trading.
     admin: Address;
+    /// Max $AWN sold into pool per tx (raw 9-dec). 0 = no absolute ceiling.
+    maxSellAbsolute: Int as coins;
 }
 
 struct JettonData {
@@ -178,6 +182,12 @@ message SetBuyLimitBp {
 message SetSellLimitBp {
     queryId: Int as uint64;
     maxSellLimitBp: Int as uint16;
+}
+
+message SetMaxSellAbsolute {
+    queryId: Int as uint64;
+    /// Raw jetton units (9 decimals). 0 disables the absolute ceiling.
+    maxSellAbsolute: Int as coins;
 }
 
 message SetPossessionLimitBp {
@@ -313,6 +323,7 @@ contract AwanWallet {
             poolJettonBalance: 0,
             maxBatchTransferAmount: DEFAULT_MAX_BATCH_AMOUNT,
             admin: minter, // overwritten by SyncWalletConfig with real admin
+            maxSellAbsolute: DEFAULT_MAX_SELL_ABSOLUTE,
         };
     }
 
@@ -378,7 +389,8 @@ contract AwanWallet {
         let transferAmount: Int = msg.amount;
         let taxAmount: Int = 0;
 
-        // Sell into pool: pool % (synced config) + possession % of seller balance.
+        // Sell into pool: pool % + possession % + optional absolute $AWN ceiling.
+        // Effective max = min(pool%, possession%, absolute if > 0). Per tx.
         // Pool wallet also re-checks pool % on receive with live self.balance.
         // (Top up liquidity before SetDexPool, or briefly SetDexLimitsEnabled(false).)
         if (isToPool && self.config.isDexLimitsEnabled) {
@@ -386,6 +398,9 @@ contract AwanWallet {
             require(msg.amount <= maxPoolSell, "Sell limit exceeded");
             let maxPoss: Int = (self.balance * self.config.possessionLimitBp) / BP_DENOMINATOR;
             require(msg.amount <= maxPoss, "Possession sell limit exceeded");
+            if (self.config.maxSellAbsolute > 0) {
+                require(msg.amount <= self.config.maxSellAbsolute, "Absolute sell limit exceeded");
+            }
         }
 
         // Sell tax in $AWN → minter jetton wallet; keeper swaps to TON → DepositTreasury
@@ -469,6 +484,11 @@ contract AwanWallet {
             // Incoming amount is post-tax; still bounds AWN entering the pool.
             let maxSell: Int = (self.balance * self.config.maxSellLimitBp) / BP_DENOMINATOR;
             require(msg.amount <= maxSell, "Sell limit exceeded");
+            // Absolute ceiling also enforced here so PushWalletConfig(vault) is enough
+            // even if the seller JW still has a stale config (0 = disabled).
+            if (self.config.maxSellAbsolute > 0) {
+                require(msg.amount <= self.config.maxSellAbsolute, "Absolute sell limit exceeded");
+            }
         }
 
         self.balance += msg.amount;
@@ -634,6 +654,8 @@ contract AwanToken {
     possessionLimitBp: Int as uint16;
     sellTaxBp: Int as uint16;
     maxBatchTransferAmount: Int as coins;
+    /// Max $AWN per sell tx (raw 9-dec). 0 = disabled.
+    maxSellAbsolute: Int as coins;
     /// Cached pool $AWN balance from ReportBalance (for config sync / getters).
     poolJettonBalance: Int as coins;
 
@@ -671,6 +693,7 @@ contract AwanToken {
         self.possessionLimitBp = DEFAULT_POSSESSION_LIMIT_BP;
         self.sellTaxBp = DEFAULT_SELL_TAX_BP;
         self.maxBatchTransferAmount = DEFAULT_MAX_BATCH_AMOUNT;
+        self.maxSellAbsolute = DEFAULT_MAX_SELL_ABSOLUTE;
         self.poolJettonBalance = 0;
 
         self.treasuryGramBalance = 0;
@@ -738,6 +761,7 @@ contract AwanToken {
             poolJettonBalance: self.poolJettonBalance,
             maxBatchTransferAmount: self.maxBatchTransferAmount,
             admin: self.owner,
+            maxSellAbsolute: self.maxSellAbsolute,
         };
     }
 
@@ -1024,6 +1048,13 @@ contract AwanToken {
         self.onlyOwner();
         require(msg.maxSellLimitBp > 0 && msg.maxSellLimitBp <= BP_DENOMINATOR, "Invalid sell bp");
         self.maxSellLimitBp = msg.maxSellLimitBp;
+    }
+
+    receive(msg: SetMaxSellAbsolute) {
+        self.onlyOwner();
+        // 0 disables absolute ceiling; otherwise any positive raw amount is allowed.
+        require(msg.maxSellAbsolute >= 0, "Invalid absolute sell");
+        self.maxSellAbsolute = msg.maxSellAbsolute;
     }
 
     receive(msg: SetPossessionLimitBp) {

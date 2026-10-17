@@ -29,13 +29,14 @@ export function Layout({ tab, onTab, children, hideNav, playing }: Props) {
     return () => window.removeEventListener("pointerdown", kick);
   }, []);
 
+  // Short labels so 6 tabs never overlap on narrow Telegram WebViews
   const navTabs: { id: TabId; label: string }[] = [
-    { id: "home", label: t.nav.home },
-    { id: "wallet", label: t.nav.wallet },
-    { id: "claim", label: t.nav.claim },
-    { id: "games", label: t.nav.games },
-    { id: "roadmap", label: t.nav.roadmap },
-    { id: "board", label: t.nav.board },
+    { id: "home", label: lang === "it" ? "Trade" : t.nav.home },
+    { id: "wallet", label: lang === "it" ? "Wallet" : t.nav.wallet },
+    { id: "claim", label: lang === "it" ? "Claim" : t.nav.claim },
+    { id: "games", label: lang === "it" ? "Giochi" : t.nav.games },
+    { id: "roadmap", label: lang === "it" ? "Road" : t.nav.roadmap },
+    { id: "board", label: lang === "it" ? "Top" : t.nav.board },
   ];
 
   return (
@@ -74,9 +75,11 @@ export function Layout({ tab, onTab, children, hideNav, playing }: Props) {
                   </button>
                 ))}
               </div>
-              <div className="header-audio">
-                <AudioDock compact={Boolean(playing)} />
-              </div>
+              {!playing && (
+                <div className="header-audio">
+                  <AudioDock />
+                </div>
+              )}
             </div>
             <TonConnectButton className="tc-btn" />
           </div>

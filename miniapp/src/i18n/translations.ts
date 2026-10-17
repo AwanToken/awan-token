@@ -41,6 +41,9 @@ export type Dict = {
     historyEmpty: string;
     cycle: string;
     refresh: string;
+    /** Dual deposit paths — no external links (Telegram-safe). */
+    dualFlowsTitle: string;
+    dualFlowsBody: string;
   };
   walletGate: {
     title: string;
@@ -55,14 +58,21 @@ export type Dict = {
     minter: string;
     rpc: string;
     hint: string;
+    chartCaption: string;
+    feedFail: string;
     limitTitle: string;
     limitBody: string;
     limitDanger: string;
+    dedustBadge: string;
+    taxReminder: string;
     limitMeta: string;
     limitLoadFail: string;
     buyConfirmTitle: string;
     buyConfirmBody: string;
     buyConfirmWarn: string;
+    swapLoading: string;
+    swapFallback: string;
+    openStonFi: string;
   };
   claim: {
     eyebrow: string;
@@ -96,6 +106,7 @@ export type Dict = {
     viewMinter: string;
     connectHint: string;
     submitted: string;
+    dualFlowsHint: string;
   };
   hangar: {
     eyebrow: string;
@@ -114,6 +125,32 @@ export type Dict = {
     runLede: string;
     starterHint: string;
     powerShop: string;
+    powerPickupHint: string;
+    livesShop: string;
+    livesLede: string;
+    livesLabel: string;
+    livesBuy: string;
+    livesBought: string;
+    livesDailyCap: string;
+    livesNeedBuy: string;
+    livesNone: string;
+    runLevelsHint: string;
+    runHintScore: string;
+    runPause: string;
+    runResume: string;
+    runPauseTitle: string;
+    runBossNeedFire: string;
+    runShopAwn: string;
+    runShopAwnHint: string;
+    runShopTon: string;
+    runShopTonHint: string;
+    runShopBought: string;
+    runShopBoughtTon: string;
+    runBtnJump: string;
+    runBtnFire: string;
+    runBtnLeaf: string;
+    runBtnPower: string;
+    firstPowerHint: string;
     siegeUpgrades: string;
     playRun: string;
     tokenMenu: string;
@@ -164,9 +201,20 @@ export type Dict = {
     empty: string;
     prize: string;
     prizeHint: string;
+    exportBtn: string;
+    exportCopied: string;
+    exportEmpty: string;
+    exportNeedWallet: string;
   };
   game: {
     lastRun: string;
+    playAgain: string;
+    siegeHint: string;
+    bombBuy: string;
+    bombDetonate: string;
+    bombArmed: string;
+    bombAlready: string;
+    bombFailed: string;
   };
   audio: {
     spotifyTitle: string;
@@ -238,10 +286,10 @@ export const translations: Record<Lang, Dict> = {
       home: "Trade",
       claim: "Claim",
       hangar: "Hangar",
-      games: "Games",
-      board: "Classifica",
+      games: "Giochi",
+      board: "Top",
       wallet: "Wallet",
-      roadmap: "Roadmap",
+      roadmap: "Road",
     },
     wallet: {
       eyebrow: "On-chain · $AWN",
@@ -266,6 +314,9 @@ export const translations: Record<Lang, Dict> = {
       historyEmpty: "Nessun claim registrato ancora.",
       cycle: "Ciclo",
       refresh: "Aggiorna on-chain",
+      dualFlowsTitle: "Due flussi TON",
+      dualFlowsBody:
+        "Fee di gioco (vite, bomba, shop) → keeper per le ops. Payout claim holder → tesoreria minter (DepositTreasury). Percorsi separati.",
     },
     walletGate: {
       title: "Wallet richiesto",
@@ -273,18 +324,22 @@ export const translations: Record<Lang, Dict> = {
       connect: "Collega wallet",
     },
     home: {
-      eyebrow: "Feed live · DEX mock",
-      buy: "Compra su Ston.fi",
-      sell: "Vendi su Ston.fi",
+      eyebrow: "Feed live · DeDust pool",
+      buy: "Compra $AWN",
+      sell: "Vendi $AWN",
       network: "Rete",
       minter: "Minter",
       rpc: "RPC",
-      hint: "Buy/Sell aprono Ston.fi (TON↔$AWN). Resta sotto il max buy on-chain — Ston.fi rifiuta prima; evita DeDust per non lasciare TON nel pool.",
-      limitTitle: "Limite buy on-chain",
+      hint: "Prezzo/grafico = mercato live. Buy/Sell = Ston.fi in-app (niente uscita). Resta sotto il max buy.",
+      chartCaption: "OHLCV 15m · prezzo TON per 1 $AWN · aggiornamento ogni 25s",
+      feedFail: "Feed DeDust temporaneamente non disponibile",
+      limitTitle: "Promemoria limiti & tasse",
       limitBody:
-        "Max per swap ≈ {pct} del vault AWN → circa {maxTon} (≤ {maxAwn}). Preferisci Ston.fi: fallisce prima del transfer.",
+        "Buy max ≈ {pct} del vault AWN → circa {maxTon} (≤ {maxAwn}). Sell tax 0% ora; limiti sell restano on-chain.",
       limitDanger:
-        "Su DeDust oltre il limite: TON resta nel pool (bounce 10374), niente $AWN. Usa Ston.fi.",
+        "Non usare DeDust per buy/sell: oltre il limite i TON restano nel pool e non ricevi $AWN. Solo Ston.fi.",
+      dedustBadge: "NO DEDUST SWAP",
+      taxReminder: "Ricorda: limiti buy/sell on-chain · preferisci Ston.fi · post futuri: acquista su Ston.fi.",
       limitMeta: "Buy cap",
       limitLoadFail: "Impossibile leggere il limite buy on-chain — compra con cautela.",
       buyConfirmTitle: "Conferma prima di Ston.fi",
@@ -292,6 +347,9 @@ export const translations: Record<Lang, Dict> = {
         "Limite attuale {pct}: resta sotto ~{maxTon} (max ~{maxAwn} per tx).",
       buyConfirmWarn:
         "Ston.fi valida prima dello swap. Resta sotto il cap per evitare fallimenti.",
+      swapLoading: "Carico swap Ston.fi in-app…",
+      swapFallback: "Widget non disponibile qui — apri Ston.fi in browser sicuro.",
+      openStonFi: "Apri Ston.fi",
     },
     claim: {
       eyebrow: "Claim settimanale ponderato",
@@ -328,45 +386,80 @@ export const translations: Record<Lang, Dict> = {
       viewMinter: "Vedi minter su explorer →",
       connectHint: "Collega il wallet per verificare l’idoneità.",
       submitted: "Claim inviato — attendi conferma, poi aggiorna.",
+      dualFlowsHint:
+        "I payout di questa schermata escono dalla tesoreria minter. Le fee di gioco (vite, bomba, shop) vanno al keeper — percorso separato.",
     },
     hangar: {
       eyebrow: "Flotta Void Courier",
       title: "Hangar",
       lede: "Scegli una silhouette neon, poi entra in AWN: Neon Siege.",
       awnHint:
-        "Boss e velivoli elite possono minare $AWN (piccole quantità, chance legata alla difficoltà).",
+        "4 livelli · miniboss +5 $AWN · superboss +10 · bomba 2 TON → keeper (+20 $AWN, 1/partita). Nemici più resistenti con armi potenziate.",
       launch: "Lancia Neon Siege",
     },
     games: {
-      eyebrow: "Sala giochi · stile Mario",
+      eyebrow: "Sala giochi · $AWN",
       title: "Games",
-      lede: "Scegli Neon Siege o AWN Run. Oro per divertimento, monete logo $AWN minate per claim futuro.",
-      siegeSub: "Shooter vertical neon · navi e upgrade",
-      runSub: "Platformer · monete oro + $AWN (~14%)",
+      lede: "Scegli Neon Siege o RunAwan. Monete logo $AWN minate per claim futuro.",
+      siegeSub: "4 livelli · bomba · armi a tier · superboss",
+      runSub: "4 livelli lunghi · mattoni · boss · joypad",
       economyHint:
         "I $AWN minati (≥100) si accodano al claim pool. Settlement on-chain = BatchTransfer Owner — non mint gratis.",
-      runLede: "Corri, salta, raccogli. Il giocatore è il logo $AWN.",
-      starterHint: "Prima partita: +10 $AWN spendibili per fungo, fiore, stella, foglia.",
-      powerShop: "Power-up Mario-like",
+      runLede:
+        "Platformer: salta sui mattoni, rompili per power-up, affronta il boss di fine livello (solo fiore di fuoco).",
+      starterHint:
+        "Prima partita: +15 $AWN spendibili (copre il primo power-up del giorno). Poi acquisti dal saldo gioco.",
+      powerShop: "Negozio $AWN (lobby)",
+      powerPickupHint:
+        "In corsa: rompi mattoni ? per fungo/fiore/stella/foglia. Boss: solo fuoco. Pausa = shop di emergenza.",
+      livesShop: "Vite / partite",
+      livesLede:
+        "3 vite gratis al giorno. Extra: 1 TON → keeper (max 10 acquisti/giorno). Solo RunAwan.",
+      livesLabel: "Vite",
+      livesBuy: "Compra 1 vita · 1 TON",
+      livesBought: "+1 vita accreditata",
+      livesDailyCap: "Limite giornaliero raggiunto (10/giorno)",
+      livesNeedBuy: "Niente vite — compra sotto",
+      livesNone: "Serve almeno 1 vita per giocare",
+      runLevelsHint:
+        "L1 Piovra · L2 Lupo mannaro · L3 Medusa · L4 Minotauro — livelli 2–3× più lunghi",
+      runHintScore: "Score",
+      runPause: "Pausa",
+      runResume: "Continua",
+      runPauseTitle: "Pausa · Power-up",
+      runBossNeedFire:
+        "Boss attivo: senza fiore di fuoco non puoi ferirlo. Compra sotto (TON emergenza o $AWN).",
+      runShopAwn: "Negozio $AWN (saldo gioco)",
+      runShopAwnHint: "Primo del giorno 15 $AWN · poi prezzi catalogo",
+      runShopTon: "Shop emergenza TON (pausa / boss)",
+      runShopTonHint: "1 TON ciascuno → keeper via TonConnect. Ideale se ti manca il fiore al boss.",
+      runShopBought: "Power-up acquistato con $AWN",
+      runShopBoughtTon: "Power-up sbloccato · 1 TON inviato",
+      runBtnJump: "SALTO",
+      runBtnFire: "FUOCO",
+      runBtnLeaf: "FOGLIA",
+      runBtnPower: "POTERE",
+      firstPowerHint: "Primo power-up oggi: 15 $AWN",
       siegeUpgrades: "Potenziamenti",
-      playRun: "Gioca AWN Run",
+      playRun: "Gioca RunAwan",
       tokenMenu: "Wallet giochi · $AWN",
       spendable: "Spendibili",
       minedPending: "Minati in attesa",
       gold: "Oro",
       minedPendingHint:
-        "Neon Siege + AWN Run condividono il saldo minato. A ≥100 $AWN puoi claimare verso il claim pool.",
+        "Neon Siege + RunAwan condividono il saldo minato. A ≥100 $AWN puoi claimare verso il claim pool.",
       claimMined: "Claim → claim pool",
       claimNeedMore: "Serve ≥{n} $AWN minati",
       claimNeedWallet: "Collega wallet per claim",
       claimQueued:
-        "Accodati {amount} $AWN per settlement dal claim pool (Owner BatchTransfer).",
+        "Accodati {amount} $AWN — Owner li vede in Command Deck e li liquida con BatchTransfer.",
       ownerClaim: "Owner · coda claim minati (nascosto)",
       ownerClaimHint:
         "PIN OWNER. Accoda tutti i $AWN minati per settlement futuro dal claim pool (BatchTransfer) — non regala token on-chain.",
       queueMined: "Accoda minati per claim pool",
       queued: "Minati accodati per settlement owner dal claim pool.",
-      ownerSettle: "Settlement on-chain solo dal Command Deck / claim pool — non da questa UI.",
+      ownerSettle:
+        "Dopo il queue, l’Owner liquida da Command Deck (Sync coda → Prefill BatchTransfer). Non mint on-chain da qui.",
       comingSoon: "In arrivo",
       comingSoonBadge: "IN ARRIVO",
       backLive: "Live (in circolo)",
@@ -375,7 +468,7 @@ export const translations: Record<Lang, Dict> = {
         "PIN OWNER. I toggle valgono subito su questo browser (localStorage). Per tutti gli utenti aggiorna public/app-status.json.",
       statusGlobal: "Tutta la miniapp",
       statusSiege: "Neon Siege",
-      statusRun: "AWN Run",
+      statusRun: "RunAwan",
       setAllComing: "Tutto in arrivo",
       setAllLive: "Tutto live",
       clearOverrides: "Pulisci override (usa JSON)",
@@ -402,9 +495,22 @@ export const translations: Record<Lang, Dict> = {
       empty: "Nessun punteggio — lancia da Games.",
       prize: "Eventi premio",
       prizeHint:
-        "Esporta i top wallet → BatchTransfer dal Command Deck per premi in $AWN. Vedi README.",
+        "Copia JSON top wallet (con importi premio) → Command Deck → Import leaderboard → Prefill BatchTransfer.",
+      exportBtn: "Copia JSON premi (top 10)",
+      exportCopied: "JSON copiato",
+      exportEmpty: "Nessun wallet esportabile in classifica.",
+      exportNeedWallet: "Serve almeno un punteggio con wallet collegato.",
     },
-    game: { lastRun: "Ultima run inviata" },
+    game: {
+      lastRun: "Ultima run inviata",
+      playAgain: "Rigioca",
+      siegeHint: "Trascina sul canvas · auto-fuoco · B = bomba",
+      bombBuy: "BOMBA {ton} TON",
+      bombDetonate: "DETONA",
+      bombArmed: "Bomba armata — tocca DETONA",
+      bombAlready: "Bomba già usata / acquistata in questa partita",
+      bombFailed: "Pagamento bomba annullato",
+    },
     audio: {
       spotifyTitle: "Spotify",
       pasteLink: "Incolla link Spotify…",
@@ -502,6 +608,9 @@ export const translations: Record<Lang, Dict> = {
       historyEmpty: "No claims recorded yet.",
       cycle: "Cycle",
       refresh: "Refresh on-chain",
+      dualFlowsTitle: "Two TON paths",
+      dualFlowsBody:
+        "Game fees (lives, bomb, shop) → keeper for ops. Holder claim payouts → minter treasury (DepositTreasury). Separate destinations.",
     },
     walletGate: {
       title: "Wallet required",
@@ -509,18 +618,22 @@ export const translations: Record<Lang, Dict> = {
       connect: "Connect wallet",
     },
     home: {
-      eyebrow: "Live feed · mock DEX",
-      buy: "Buy on Ston.fi",
-      sell: "Sell on Ston.fi",
+      eyebrow: "Live feed · DeDust pool",
+      buy: "Buy $AWN",
+      sell: "Sell $AWN",
       network: "Network",
       minter: "Minter",
       rpc: "RPC",
-      hint: "Buy/Sell open Ston.fi (TON↔$AWN). Stay under the on-chain max buy — Ston.fi fails early; avoid DeDust stranded-TON bounce.",
-      limitTitle: "On-chain buy limit",
+      hint: "Price/chart = live market. Buy/Sell = in-app Ston.fi. Stay under max buy.",
+      chartCaption: "OHLCV 15m · TON per 1 $AWN · refresh every 25s",
+      feedFail: "DeDust feed temporarily unavailable",
+      limitTitle: "Limits & tax reminder",
       limitBody:
-        "Max per swap ≈ {pct} of vault AWN → about {maxTon} (≤ {maxAwn}). Prefer Ston.fi: it fails before the transfer.",
+        "Buy max ≈ {pct} of vault AWN → about {maxTon} (≤ {maxAwn}). Sell tax 0% now; sell limits stay on-chain.",
       limitDanger:
-        "On DeDust over limit: TON stays in the pool (bounce 10374), no $AWN. Use Ston.fi.",
+        "Do not swap on DeDust: over the limit, TON stays in the pool and you get no $AWN. Use Ston.fi only.",
+      dedustBadge: "NO DEDUST SWAP",
+      taxReminder: "Remember: on-chain buy/sell caps · prefer Ston.fi · future posts: buy on Ston.fi.",
       limitMeta: "Buy cap",
       limitLoadFail: "Could not read on-chain buy limit — buy carefully.",
       buyConfirmTitle: "Confirm before Ston.fi",
@@ -528,6 +641,9 @@ export const translations: Record<Lang, Dict> = {
         "Current limit {pct}: stay under ~{maxTon} (max ~{maxAwn} per tx).",
       buyConfirmWarn:
         "Ston.fi validates before the swap. Stay under the cap to avoid failed trades.",
+      swapLoading: "Loading in-app Ston.fi swap…",
+      swapFallback: "Widget unavailable here — open Ston.fi safely.",
+      openStonFi: "Open Ston.fi",
     },
     claim: {
       eyebrow: "Weekly weighted claim",
@@ -564,45 +680,80 @@ export const translations: Record<Lang, Dict> = {
       viewMinter: "View minter on explorer →",
       connectHint: "Connect wallet to check holder eligibility.",
       submitted: "Claim submitted — wait for confirmation, then refresh.",
+      dualFlowsHint:
+        "Payouts on this screen come from the minter treasury. Game fees (lives, bomb, shop) go to the keeper — a separate path.",
     },
     hangar: {
       eyebrow: "Void Courier fleet",
       title: "Hangar",
       lede: "Choose a neon silhouette, then enter AWN: Neon Siege.",
       awnHint:
-        "Bosses & elite craft can mine $AWN (small amounts; chance scales with difficulty).",
+        "4 levels · miniboss +5 $AWN · superboss +10 · bomb 2 TON → keeper (+20 $AWN, 1/match). Enemies toughen with powered weapons.",
       launch: "Launch Neon Siege",
     },
     games: {
       eyebrow: "Arcade · Mario-style hub",
       title: "Games",
-      lede: "Pick Neon Siege or AWN Run. Gold for fun, logo $AWN coins mined for a future claim.",
-      siegeSub: "Neon vertical shooter · ships & upgrades",
-      runSub: "Platformer · gold + $AWN coins (~14%)",
+      lede: "Pick Neon Siege or RunAwan. Gold for fun, logo $AWN coins mined for a future claim.",
+      siegeSub: "4 levels · bomb · weapon tiers · superboss",
+      runSub: "4 long levels · bricks · bosses · joypad",
       economyHint:
         "Mined $AWN (≥100) queue to the claim pool. On-chain settlement = Owner BatchTransfer — not free mint.",
-      runLede: "Run, jump, collect. You are the $AWN logo.",
-      starterHint: "First play: +10 spendable $AWN for mushroom, flower, star, leaf.",
-      powerShop: "Mario-like power-ups",
+      runLede:
+        "Platformer: climb bricks, smash for power-ups, beat the end boss (fire flower only).",
+      starterHint:
+        "First play: +15 spendable $AWN (covers the first power-up of the day). Later buys from game balance.",
+      powerShop: "$AWN shop (lobby)",
+      powerPickupHint:
+        "In-run: smash ? bricks for mushroom/fire/star/leaf. Bosses need fire. Pause = emergency shop.",
+      livesShop: "Lives / plays",
+      livesLede:
+        "3 free lives per day. Extra: 1 TON → keeper (max 10 buys/day). RunAwan only.",
+      livesLabel: "Lives",
+      livesBuy: "Buy 1 life · 1 TON",
+      livesBought: "+1 life credited",
+      livesDailyCap: "Daily purchase cap reached (10/day)",
+      livesNeedBuy: "No lives — buy below",
+      livesNone: "Need at least 1 life to play",
+      runLevelsHint:
+        "L1 Octopus · L2 Werewolf · L3 Medusa · L4 Minotaur — maps 2–3× longer",
+      runHintScore: "Score",
+      runPause: "Pause",
+      runResume: "Resume",
+      runPauseTitle: "Pause · Power-ups",
+      runBossNeedFire:
+        "Boss fight: without a fire flower you cannot damage it. Buy below (TON emergency or $AWN).",
+      runShopAwn: "$AWN shop (game balance)",
+      runShopAwnHint: "First of the day 15 $AWN · then catalog prices",
+      runShopTon: "TON emergency shop (pause / boss)",
+      runShopTonHint: "1 TON each → keeper via TonConnect. Best when you lack fire at the boss.",
+      runShopBought: "Power-up bought with $AWN",
+      runShopBoughtTon: "Power-up unlocked · 1 TON sent",
+      runBtnJump: "JUMP",
+      runBtnFire: "FIRE",
+      runBtnLeaf: "LEAF",
+      runBtnPower: "POWER",
+      firstPowerHint: "First power-up today: 15 $AWN",
       siegeUpgrades: "Upgrades",
-      playRun: "Play AWN Run",
+      playRun: "Play RunAwan",
       tokenMenu: "Games wallet · $AWN",
       spendable: "Spendable",
       minedPending: "Mined pending",
       gold: "Gold",
       minedPendingHint:
-        "Neon Siege + AWN Run share one mined balance. At ≥100 $AWN you can claim toward the claim pool.",
+        "Neon Siege + RunAwan share one mined balance. At ≥100 $AWN you can claim toward the claim pool.",
       claimMined: "Claim → claim pool",
       claimNeedMore: "Need ≥{n} mined $AWN",
       claimNeedWallet: "Connect wallet to claim",
       claimQueued:
-        "Queued {amount} $AWN for claim-pool settlement (Owner BatchTransfer).",
+        "Queued {amount} $AWN — Owner sees it on Command Deck and settles via BatchTransfer.",
       ownerClaim: "Owner · mined claim queue (hidden)",
       ownerClaimHint:
         "PIN OWNER. Queue all mined $AWN for later claim-pool settlement (BatchTransfer) — does not gift on-chain tokens.",
       queueMined: "Queue mined for claim pool",
       queued: "Mined tokens queued for owner settlement from claim pool.",
-      ownerSettle: "On-chain settlement only via Command Deck / claim pool — not from this UI.",
+      ownerSettle:
+        "After queue, Owner settles on Command Deck (Sync queue → Prefill BatchTransfer). No on-chain mint here.",
       comingSoon: "Coming soon",
       comingSoonBadge: "COMING SOON",
       backLive: "Live (in circulation)",
@@ -611,7 +762,7 @@ export const translations: Record<Lang, Dict> = {
         "PIN OWNER. Toggles apply immediately on this browser (localStorage). For all users, update public/app-status.json.",
       statusGlobal: "Whole miniapp",
       statusSiege: "Neon Siege",
-      statusRun: "AWN Run",
+      statusRun: "RunAwan",
       setAllComing: "Set all coming",
       setAllLive: "Set all live",
       clearOverrides: "Clear overrides (use JSON)",
@@ -637,9 +788,23 @@ export const translations: Record<Lang, Dict> = {
       lede: "Top 20 Neon Siege scores (device-local + session).",
       empty: "No scores yet — launch from Games.",
       prize: "Prize events",
-      prizeHint: "Export top wallets → Command Deck BatchTransfer for $AWN prizes. See README.",
+      prizeHint:
+        "Copy top-wallet JSON (with prize amounts) → Command Deck → Import leaderboard → Prefill BatchTransfer.",
+      exportBtn: "Copy prize JSON (top 10)",
+      exportCopied: "JSON copied",
+      exportEmpty: "No exportable wallets on the board.",
+      exportNeedWallet: "Need at least one score with a connected wallet.",
     },
-    game: { lastRun: "Last run submitted" },
+    game: {
+      lastRun: "Last run submitted",
+      playAgain: "Play again",
+      siegeHint: "Drag on canvas · auto-fire · B = bomb",
+      bombBuy: "BOMB {ton} TON",
+      bombDetonate: "DETONATE",
+      bombArmed: "Bomb armed — tap DETONATE",
+      bombAlready: "Bomb already used / bought this match",
+      bombFailed: "Bomb payment cancelled",
+    },
     audio: {
       spotifyTitle: "Spotify",
       pasteLink: "Paste Spotify link…",
@@ -737,6 +902,9 @@ export const translations: Record<Lang, Dict> = {
       historyEmpty: "Пока нет записей.",
       cycle: "Цикл",
       refresh: "Обновить on-chain",
+      dualFlowsTitle: "Два пути TON",
+      dualFlowsBody:
+        "Игровые fee (жизни, бомба, shop) → keeper для ops. Выплаты claim holder → treasury минтера (DepositTreasury). Разные назначения.",
     },
     walletGate: {
       title: "Нужен кошелёк",
@@ -744,18 +912,22 @@ export const translations: Record<Lang, Dict> = {
       connect: "Подключить",
     },
     home: {
-      eyebrow: "Лайв фид · mock DEX",
-      buy: "Купить на Ston.fi",
-      sell: "Продать на Ston.fi",
+      eyebrow: "Лайв фид · пул DeDust",
+      buy: "Купить $AWN",
+      sell: "Продать $AWN",
       network: "Сеть",
       minter: "Минтер",
       rpc: "RPC",
-      hint: "Buy/Sell открывают Ston.fi (TON↔$AWN). Не превышайте max buy — Ston.fi отклоняет раньше; избегайте DeDust bounce.",
-      limitTitle: "Ончейн лимит buy",
+      hint: "Цена/график = live market. Buy/Sell = Ston.fi в приложении. Не превышайте max buy.",
+      chartCaption: "OHLCV 15м · TON за 1 $AWN · обновление каждые 25с",
+      feedFail: "Фида DeDust временно нет",
+      limitTitle: "Лимиты и налог",
       limitBody:
-        "Макс. за своп ≈ {pct} AWN vault → около {maxTon} (≤ {maxAwn}). Предпочитайте Ston.fi: отказ до transfer.",
+        "Buy max ≈ {pct} AWN vault → около {maxTon} (≤ {maxAwn}). Sell tax 0%; лимиты sell on-chain.",
       limitDanger:
-        "На DeDust сверх лимита: TON в пуле (bounce 10374), без $AWN. Используйте Ston.fi.",
+        "Не используйте DeDust для свопа: сверх лимита TON остаётся в пуле без $AWN. Только Ston.fi.",
+      dedustBadge: "NO DEDUST SWAP",
+      taxReminder: "Помните: лимиты on-chain · Ston.fi · будущие посты: покупайте на Ston.fi.",
       limitMeta: "Buy cap",
       limitLoadFail: "Не удалось прочитать лимит buy — покупайте осторожно.",
       buyConfirmTitle: "Подтвердите перед Ston.fi",
@@ -763,6 +935,9 @@ export const translations: Record<Lang, Dict> = {
         "Текущий лимит {pct}: держитесь ниже ~{maxTon} (макс. ~{maxAwn} за tx).",
       buyConfirmWarn:
         "Ston.fi проверяет до свопа. Держитесь ниже капа, чтобы не получить отказ.",
+      swapLoading: "Загрузка Ston.fi…",
+      swapFallback: "Виджет недоступен — откройте Ston.fi.",
+      openStonFi: "Открыть Ston.fi",
     },
     claim: {
       eyebrow: "Еженедельный взвешенный клейм",
@@ -799,45 +974,79 @@ export const translations: Record<Lang, Dict> = {
       viewMinter: "Минтер в explorer →",
       connectHint: "Подключите кошелёк для проверки eligibility.",
       submitted: "Клейм отправлен — дождитесь подтверждения.",
+      dualFlowsHint:
+        "Выплаты на этом экране из treasury минтера. Игровые fee (жизни, бомба, shop) идут на keeper — отдельный путь.",
     },
     hangar: {
       eyebrow: "Флот Void Courier",
       title: "Ангар",
       lede: "Выберите неон-силуэт и войдите в AWN: Neon Siege.",
       awnHint:
-        "Боссы и элитные корабли могут майнить $AWN (мало; шанс растёт с сложностью).",
+        "4 уровня · минибосс +5 $AWN · супербосс +10 · бомба 2 TON → keeper (+20 $AWN, 1/матч). Враги крепче при усиленном оружии.",
       launch: "Запуск Neon Siege",
     },
     games: {
       eyebrow: "Аркада · в стиле Mario",
       title: "Игры",
-      lede: "Neon Siege или AWN Run. Золото — для веселья, монеты-логотип $AWN — майнинг к будущему клейму.",
-      siegeSub: "Вертикальный шутер · корабли и апгрейды",
-      runSub: "Платформер · золото + $AWN (~14%)",
+      lede: "Neon Siege или RunAwan. Золото — для веселья, монеты-логотип $AWN — майнинг к будущему клейму.",
+      siegeSub: "4 уровня · бомба · тиры оружия · супербосс",
+      runSub: "4 длинных уровня · блоки · боссы · джойпад",
       economyHint:
         "Mined $AWN (≥100) в очередь claim pool. Settlement on-chain = Owner BatchTransfer — не бесплатный минт.",
-      runLede: "Беги, прыгай, собирай. Игрок — логотип $AWN.",
-      starterHint: "Первый запуск: +10 spendable $AWN на гриб, цветок, звезду, лист.",
-      powerShop: "Пауэр-апы как в Mario",
+      runLede:
+        "Платформер: прыгай по блокам, ломай их ради пауэр-апов, босс в конце (только огненный цветок).",
+      starterHint:
+        "Первый запуск: +10 spendable $AWN. Первый пауэр-ап дня: 15 $AWN; дальше — с игрового баланса.",
+      powerShop: "Магазин $AWN (лобби)",
+      powerPickupHint:
+        "В забеге: ломай ?-блоки. Боссам нужен огонь. Пауза = экстренный магазин.",
+      livesShop: "Жизни / партии",
+      livesLede:
+        "3 бесплатные жизни в день. Доп.: 1 TON → keeper (макс. 10 покупок/день). Только RunAwan.",
+      livesLabel: "Жизни",
+      livesBuy: "Купить 1 жизнь · 1 TON",
+      livesBought: "+1 жизнь зачислена",
+      livesDailyCap: "Дневной лимит покупок (10/день)",
+      livesNeedBuy: "Нет жизней — купите ниже",
+      livesNone: "Нужна хотя бы 1 жизнь",
+      runLevelsHint: "L1 Осьминог · L2 Оборотень · L3 Медуза · L4 Минотавр — карты 2–3× длиннее",
+      runHintScore: "Счёт",
+      runPause: "Пауза",
+      runResume: "Продолжить",
+      runPauseTitle: "Пауза · Пауэр-апы",
+      runBossNeedFire:
+        "Босс: без огненного цветка урон не проходит. Купите ниже (TON или $AWN).",
+      runShopAwn: "Магазин $AWN (игровой баланс)",
+      runShopAwnHint: "Первый за день 15 $AWN · далее цены каталога",
+      runShopTon: "Экстренный TON-магазин (пауза / босс)",
+      runShopTonHint: "1 TON каждый → keeper через TonConnect.",
+      runShopBought: "Пауэр-ап куплен за $AWN",
+      runShopBoughtTon: "Пауэр-ап открыт · 1 TON отправлен",
+      runBtnJump: "ПРЫЖОК",
+      runBtnFire: "ОГОНЬ",
+      runBtnLeaf: "ЛИСТ",
+      runBtnPower: "СИЛА",
+      firstPowerHint: "Первый пауэр-ап сегодня: 15 $AWN",
       siegeUpgrades: "Апгрейды",
-      playRun: "Играть AWN Run",
+      playRun: "Играть RunAwan",
       tokenMenu: "Кошелёк игр · $AWN",
       spendable: "Spendable",
       minedPending: "Mined в ожидании",
       gold: "Золото",
       minedPendingHint:
-        "Neon Siege + AWN Run делят mined-баланс. При ≥100 $AWN можно claim в claim pool.",
+        "Neon Siege + RunAwan делят mined-баланс. При ≥100 $AWN можно claim в claim pool.",
       claimMined: "Claim → claim pool",
       claimNeedMore: "Нужно ≥{n} mined $AWN",
       claimNeedWallet: "Подключите кошелёк для claim",
       claimQueued:
-        "В очередь {amount} $AWN для settlement из claim pool (Owner BatchTransfer).",
+        "В очередь {amount} $AWN — Owner видит в Command Deck и платит через BatchTransfer.",
       ownerClaim: "Owner · очередь mined claim (скрыто)",
       ownerClaimHint:
         "PIN OWNER. В очередь весь mined $AWN для позднего settlement из claim pool (BatchTransfer) — не дарит on-chain токены.",
       queueMined: "В очередь mined → claim pool",
       queued: "Mined поставлены в очередь для settlement из claim pool.",
-      ownerSettle: "On-chain settlement только через Command Deck / claim pool — не из этого UI.",
+      ownerSettle:
+        "После очереди Owner платит в Command Deck (Sync → Prefill BatchTransfer). Без mint здесь.",
       comingSoon: "Скоро",
       comingSoonBadge: "СКОРО",
       backLive: "Live (в обороте)",
@@ -846,7 +1055,7 @@ export const translations: Record<Lang, Dict> = {
         "PIN OWNER. Переключатели сразу на этом браузере (localStorage). Для всех пользователей обновите public/app-status.json.",
       statusGlobal: "Всё мини-приложение",
       statusSiege: "Neon Siege",
-      statusRun: "AWN Run",
+      statusRun: "RunAwan",
       setAllComing: "Всё в «скоро»",
       setAllLive: "Всё live",
       clearOverrides: "Сбросить override (JSON)",
@@ -872,9 +1081,23 @@ export const translations: Record<Lang, Dict> = {
       lede: "Топ-20 счётов Neon Siege (локально + сессия).",
       empty: "Пока нет очков — запустите из Игр.",
       prize: "Призовые ивенты",
-      prizeHint: "Экспорт топ-кошельков → BatchTransfer в Command Deck ($AWN).",
+      prizeHint:
+        "Скопируй JSON топ-кошельков → Command Deck → Import leaderboard → Prefill BatchTransfer.",
+      exportBtn: "Копировать JSON призов (топ 10)",
+      exportCopied: "JSON скопирован",
+      exportEmpty: "Нет кошельков для экспорта.",
+      exportNeedWallet: "Нужен хотя бы один счёт с подключённым кошельком.",
     },
-    game: { lastRun: "Последний забег отправлен" },
+    game: {
+      lastRun: "Последний забег отправлен",
+      playAgain: "Ещё раз",
+      siegeHint: "Тяни по экрану · автоогонь · B = бомба",
+      bombBuy: "БОМБА {ton} TON",
+      bombDetonate: "ВЗРЫВ",
+      bombArmed: "Бомба готова — нажми ВЗРЫВ",
+      bombAlready: "Бомба уже куплена / использована в матче",
+      bombFailed: "Оплата бомбы отменена",
+    },
     audio: {
       spotifyTitle: "Spotify",
       pasteLink: "Вставьте ссылку Spotify…",
@@ -972,6 +1195,9 @@ export const translations: Record<Lang, Dict> = {
       historyEmpty: "暂无记录。",
       cycle: "周期",
       refresh: "刷新链上数据",
+      dualFlowsTitle: "两条 TON 路径",
+      dualFlowsBody:
+        "游戏费用（生命、炸弹、商店）→ Keeper 运营。持有者领取 → 铸造合约金库（DepositTreasury）。目的地不同。",
     },
     walletGate: {
       title: "需要连接钱包",
@@ -979,18 +1205,22 @@ export const translations: Record<Lang, Dict> = {
       connect: "连接钱包",
     },
     home: {
-      eyebrow: "实时行情 · 模拟 DEX",
-      buy: "在 Ston.fi 买入",
-      sell: "在 Ston.fi 卖出",
+      eyebrow: "实时行情 · DeDust 池",
+      buy: "买入 $AWN",
+      sell: "卖出 $AWN",
       network: "网络",
       minter: "铸造合约",
       rpc: "RPC",
-      hint: "买入/卖出打开 Ston.fi（TON↔$AWN）。勿超过链上 max buy — Ston.fi 会提前失败；避免 DeDust 滞留 TON。",
-      limitTitle: "链上买入限额",
+      hint: "价格/图表 = 实时行情。买卖 = 应用内 Ston.fi。勿超过 max buy。",
+      chartCaption: "OHLCV 15m · 每 1 $AWN 的 TON · 每 25 秒刷新",
+      feedFail: "DeDust 行情暂时不可用",
+      limitTitle: "限额与税费提醒",
       limitBody:
-        "单笔上限 ≈ vault AWN 的 {pct} → 约 {maxTon}（≤ {maxAwn}）。请优先 Ston.fi：在转账前失败。",
+        "买入上限 ≈ vault AWN 的 {pct} → 约 {maxTon}（≤ {maxAwn}）。当前卖出税 0%。",
       limitDanger:
-        "DeDust 超限：TON 留在池中（bounce 10374）且无 $AWN。请用 Ston.fi。",
+        "请勿在 DeDust 买卖：超限后 TON 留在池中且无 $AWN。请只用 Ston.fi。",
+      dedustBadge: "NO DEDUST SWAP",
+      taxReminder: "记住：链上限额 · 优先 Ston.fi · 后续宣传：在 Ston.fi 购买。",
       limitMeta: "Buy cap",
       limitLoadFail: "无法读取链上买入限额 — 请谨慎购买。",
       buyConfirmTitle: "打开 Ston.fi 前确认",
@@ -998,6 +1228,9 @@ export const translations: Record<Lang, Dict> = {
         "当前限额 {pct}：请保持在 ~{maxTon} 以下（每笔最多 ~{maxAwn}）。",
       buyConfirmWarn:
         "Ston.fi 在成交前校验。请保持在限额内以免交易失败。",
+      swapLoading: "正在加载 Ston.fi…",
+      swapFallback: "组件不可用 — 请打开 Ston.fi。",
+      openStonFi: "打开 Ston.fi",
     },
     claim: {
       eyebrow: "每周加权领取",
@@ -1031,43 +1264,73 @@ export const translations: Record<Lang, Dict> = {
       viewMinter: "在浏览器查看铸造合约 →",
       connectHint: "连接钱包以检查资格。",
       submitted: "已提交领取 — 等待确认后刷新。",
+      dualFlowsHint:
+        "本页领取来自铸造合约金库。游戏费用（生命、炸弹、商店）进入 Keeper — 另一条路径。",
     },
     hangar: {
       eyebrow: "Void Courier 舰队",
       title: "机库",
       lede: "选择霓虹机型，进入 AWN: Neon Siege。",
-      awnHint: "击败 Boss 与精英战机可挖矿 $AWN（少量；概率随难度温和提升）。",
+      awnHint:
+        "4 关 · 小 Boss +5 $AWN · 超级 Boss +10 · 炸弹 2 TON → Keeper（+20 $AWN，每局 1 次）。武器越强敌人越硬。",
       launch: "启动 Neon Siege",
     },
     games: {
       eyebrow: "街机 · 马里奥风格大厅",
       title: "游戏",
-      lede: "选择 Neon Siege 或 AWN Run。金币仅娱乐，Logo $AWN 币计入未来领取。",
-      siegeSub: "霓虹竖版射击 · 战机与升级",
-      runSub: "平台跑酷 · 金币 + $AWN（约 14%）",
+      lede: "选择 Neon Siege 或 RunAwan。金币仅娱乐，Logo $AWN 币计入未来领取。",
+      siegeSub: "4 关 · 炸弹 · 武器等级 · 超级 Boss",
+      runSub: "4 长关 · 砖块 · Boss · 虚拟摇杆",
       economyHint:
         "已挖 $AWN（≥100）进入领取池队列。链上结算 = Owner BatchTransfer — 非免费铸造。",
-      runLede: "奔跑跳跃收集。玩家角色是 $AWN Logo。",
-      starterHint: "首次游戏：+10 可花费 $AWN，用于蘑菇、火花、星星、叶子。",
-      powerShop: "马里奥风格道具",
+      runLede: "平台跳跃：踩砖、砸砖开道具，关底 Boss（仅火花可伤）。",
+      starterHint: "首次：+10 可花费 $AWN。当日首个道具 15 $AWN；之后从游戏余额扣。",
+      powerShop: "$AWN 商店（大厅）",
+      powerPickupHint: "关内砸 ? 砖获蘑菇/火花/星星/叶子。Boss 需火花。暂停=应急商店。",
+      livesShop: "生命 / 次数",
+      livesLede: "每日 3 次免费。额外：1 TON → Keeper（每天最多买 10 次）。仅 RunAwan。",
+      livesLabel: "生命",
+      livesBuy: "购买 1 生命 · 1 TON",
+      livesBought: "+1 生命已到账",
+      livesDailyCap: "已达每日购买上限（10/天）",
+      livesNeedBuy: "没有生命 — 请在下方购买",
+      livesNone: "至少需要 1 点生命才能开始",
+      runLevelsHint: "L1 章鱼 · L2 狼人 · L3 美杜莎 · L4 弥诺陶 — 地图长约 2–3 倍",
+      runHintScore: "分数",
+      runPause: "暂停",
+      runResume: "继续",
+      runPauseTitle: "暂停 · 道具",
+      runBossNeedFire: "Boss 战：没有火花无法造成伤害。请在下方购买（TON 应急或 $AWN）。",
+      runShopAwn: "$AWN 商店（游戏余额）",
+      runShopAwnHint: "当日首次 15 $AWN · 之后按目录价",
+      runShopTon: "TON 应急店（暂停 / Boss）",
+      runShopTonHint: "每个 1 TON → 经 TonConnect 付给 Keeper。",
+      runShopBought: "已用 $AWN 购买道具",
+      runShopBoughtTon: "道具已解锁 · 已发送 1 TON",
+      runBtnJump: "跳",
+      runBtnFire: "火",
+      runBtnLeaf: "叶",
+      runBtnPower: "技",
+      firstPowerHint: "今日首个道具：15 $AWN",
       siegeUpgrades: "升级",
-      playRun: "开始 AWN Run",
+      playRun: "开始 RunAwan",
       tokenMenu: "游戏钱包 · $AWN",
       spendable: "可花费",
       minedPending: "已挖待领",
       gold: "金币",
       minedPendingHint:
-        "Neon Siege 与 AWN Run 共用已挖余额。达到 ≥100 $AWN 可向领取池领取。",
+        "Neon Siege 与 RunAwan 共用已挖余额。达到 ≥100 $AWN 可向领取池领取。",
       claimMined: "领取 → 领取池",
       claimNeedMore: "需要 ≥{n} 已挖 $AWN",
       claimNeedWallet: "连接钱包后领取",
-      claimQueued: "已将 {amount} $AWN 排队，等待领取池结算（Owner BatchTransfer）。",
+      claimQueued: "已将 {amount} $AWN 排队 — Owner 在 Command Deck 可见并用 BatchTransfer 结算。",
       ownerClaim: "Owner · 已挖领取队列（隐藏）",
       ownerClaimHint:
         "PIN 输入 OWNER。将全部已挖 $AWN 排队，供日后从领取池 BatchTransfer 结算 — 不会赠送链上代币。",
       queueMined: "将已挖加入领取池队列",
       queued: "已挖代币已加入 owner 领取池结算队列。",
-      ownerSettle: "链上结算仅通过 Command Deck / 领取池 — 不在此界面完成。",
+      ownerSettle:
+        "排队后由 Owner 在 Command Deck 结算（同步队列 → Prefill BatchTransfer）。此处不铸币。",
       comingSoon: "即将上线",
       comingSoonBadge: "即将上线",
       backLive: "上线（流通中）",
@@ -1076,7 +1339,7 @@ export const translations: Record<Lang, Dict> = {
         "PIN 输入 OWNER。开关仅立即作用于本浏览器（localStorage）。面向所有用户请更新 public/app-status.json。",
       statusGlobal: "整个小程序",
       statusSiege: "Neon Siege",
-      statusRun: "AWN Run",
+      statusRun: "RunAwan",
       setAllComing: "全部即将上线",
       setAllLive: "全部上线",
       clearOverrides: "清除覆盖（使用 JSON）",
@@ -1102,9 +1365,23 @@ export const translations: Record<Lang, Dict> = {
       lede: "Neon Siege 前20名（本机 + 会话）。",
       empty: "暂无分数 — 从游戏开始。",
       prize: "奖励活动",
-      prizeHint: "导出前排钱包 → Command Deck BatchTransfer 发放 $AWN。见 README。",
+      prizeHint:
+        "复制前排钱包 JSON → Command Deck → Import leaderboard → Prefill BatchTransfer。",
+      exportBtn: "复制奖励 JSON（前10）",
+      exportCopied: "已复制 JSON",
+      exportEmpty: "排行榜无可导出钱包。",
+      exportNeedWallet: "至少需要一条已连接钱包的成绩。",
     },
-    game: { lastRun: "本局分数已提交" },
+    game: {
+      lastRun: "本局分数已提交",
+      playAgain: "再玩",
+      siegeHint: "拖动画布 · 自动开火 · B = 炸弹",
+      bombBuy: "炸弹 {ton} TON",
+      bombDetonate: "引爆",
+      bombArmed: "炸弹已就绪 — 点引爆",
+      bombAlready: "本局已购买/使用过炸弹",
+      bombFailed: "炸弹支付已取消",
+    },
     audio: {
       spotifyTitle: "Spotify",
       pasteLink: "粘贴 Spotify 链接…",

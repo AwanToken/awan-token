@@ -1,5 +1,5 @@
 {
-  "url": "https://awantoken.netlify.app",
-  "name": "AWN Command Deck",
-  "iconUrl": "https://awantoken.netlify.app/awn-logo.png"
+  "url": "https://awn-miniapp-vercel.vercel.app",
+  "name": "$AWN Command Deck",
+  "iconUrl": "https://awn-miniapp-vercel.vercel.app/awn-logo.png"
 }

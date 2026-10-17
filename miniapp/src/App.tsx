@@ -16,6 +16,7 @@ import {
   ensureStarterGrant,
   type RunPowerId,
 } from "./lib/gameEconomy";
+import { consumeRunLife } from "./lib/runLives";
 import { registerMiniappHolder } from "./lib/holderRegistry";
 import { submitScore } from "./lib/leaderboard";
 import { applyUpgrades, loadOwned } from "./lib/upgrades";
@@ -44,6 +45,8 @@ export default function App() {
   const [shipId, setShipId] = useState<ShipId>("viper_mk2");
   const [difficulty, setDifficulty] = useState<DifficultyId>("easy");
   const [playingMode, setPlayingMode] = useState<"siege" | "run" | null>(null);
+  const [siegeKey, setSiegeKey] = useState(0);
+  const [runKey, setRunKey] = useState(0);
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [ecoTick, setEcoTick] = useState(0);
   const [runPowers, setRunPowers] = useState<RunPowerId[]>([]);
@@ -73,7 +76,7 @@ export default function App() {
   }, []);
 
   const onSiegeOver = useCallback(
-    (p: { score: number; wave: number; minedAwn: number }) => {
+    (p: { score: number; wave: number; level: number; minedAwn: number }) => {
       setLastScore(p.score);
       if (p.minedAwn > 0) {
         applySiegeKillReward(wallet, p.minedAwn);
@@ -109,10 +112,15 @@ export default function App() {
     return (
       <Layout tab="games" onTab={setTab} hideNav playing>
         <NeonSiege
+          key={siegeKey}
           shipId={shipId}
           stats={stats}
           difficulty={difficulty}
           onExit={exitToGames}
+          onRestart={() => {
+            setLastScore(null);
+            setSiegeKey((k) => k + 1);
+          }}
           onGameOver={onSiegeOver}
         />
         {lastScore !== null && (
@@ -127,7 +135,27 @@ export default function App() {
   if (playingMode === "run" && wallet) {
     return (
       <Layout tab="games" onTab={setTab} hideNav playing>
-        <AwnRun powers={runPowers} onExit={exitToGames} onOver={onRunOver} />
+        <AwnRun
+          key={runKey}
+          powers={runPowers}
+          wallet={wallet}
+          onExit={exitToGames}
+          onRestart={() => {
+            const life = consumeRunLife(wallet);
+            if (!life.ok) {
+              exitToGames();
+              return;
+            }
+            setLastScore(null);
+            setRunKey((k) => k + 1);
+            setEcoTick((n) => n + 1);
+          }}
+          onOver={onRunOver}
+          onPowersChange={(p) => {
+            setRunPowers([...p]);
+            setEcoTick((n) => n + 1);
+          }}
+        />
         {lastScore !== null && (
           <p className="hint center">
             {t.game.lastRun}: {lastScore}
@@ -177,10 +205,16 @@ export default function App() {
               void (async () => {
                 if (!(await requireWallet())) return;
                 if (isGameComing("run")) return;
+                const life = consumeRunLife(wallet);
+                if (!life.ok) {
+                  setEcoTick((n) => n + 1);
+                  return;
+                }
                 const eco = ensureStarterGrant(wallet);
                 setRunPowers([...eco.powers]);
                 setLastScore(null);
                 setPlayingMode("run");
+                setEcoTick((n) => n + 1);
                 haptic("medium");
               })();
             }}

@@ -30,7 +30,10 @@ export const EXPLORER =
     ? "https://tonviewer.com"
     : "https://testnet.tonviewer.com";
 
-/** Keeper / treasury receiving upgrade shop TON payments (configurable). */
+/**
+ * Keeper receiving upgrade shop, Neon Siege bomb (2 TON), and RunAwan lives (1 TON).
+ * Same wallet as admin DEFAULT_KEEPER / deployments/mainnet-wallets.json AWN-Treasury-Keeper.
+ */
 export const TREASURY_OR_KEEPER =
   import.meta.env.VITE_TREASURY_OR_KEEPER ||
   "UQCKBs_vJoZzhIrcz46G4KieMA1xRPTA7ALT0KOnz-PhRou6";
@@ -73,3 +76,13 @@ export const DEDUST_SWAP_URL =
  * Settlement is owner BatchTransfer from claim-pool path — not free mint.
  */
 export const MINED_CLAIM_THRESHOLD = 100;
+
+/** Shared holders registry (miniapp POST → Command Deck GET). */
+export const HOLDERS_API_URL =
+  import.meta.env.VITE_HOLDERS_ENDPOINT ||
+  `${typeof window !== "undefined" ? window.location.origin : "https://awn-miniapp-vercel.vercel.app"}/api/holders`;
+
+/** Shared mined-$AWN claim queue (miniapp POST → Command Deck GET / BatchTransfer). */
+export const MINED_QUEUE_API_URL =
+  import.meta.env.VITE_MINED_QUEUE_ENDPOINT ||
+  `${typeof window !== "undefined" ? window.location.origin : "https://awn-miniapp-vercel.vercel.app"}/api/mined-queue`;

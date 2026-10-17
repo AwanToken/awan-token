@@ -9,6 +9,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { DeployStatusPanel } from "./components/DeployStatusPanel";
+import { TokenMarketPanel } from "./components/TokenMarketPanel";
 import {
   CLAIM_PERIOD,
   CLAIM_WINDOW,
@@ -19,13 +21,41 @@ import {
   NETWORK,
   OWNER_JETTON_WALLET,
 } from "./config";
+import { DEDUST_POOL } from "./lib/dedustFeed";
+import {
+  fetchMarketSnapshot,
+  type MarketSnapshot,
+} from "./lib/geckoMarket";
+import { formatTinyPrice } from "./lib/formatTinyPrice";
 import {
   HOLDERS_LS_KEY,
+  formatAwnDisplay,
   importHolderRegistryJson,
   loadHolderRegistry,
   saveHolderRegistry,
+  summarizeTokenLocation,
+  syncHoldersFromNetwork,
   type HolderRow,
 } from "./lib/holders";
+import {
+  importLeaderboardPrizeJson,
+  leaderboardPrizesToBatchText,
+  totalPrizeAwn,
+} from "./lib/leaderboardPrizes";
+import {
+  MINED_QUEUE_LS_KEY,
+  clearRemoteMinedQueue,
+  fetchRemoteMinedQueue,
+  importMinedQueueJson,
+  loadLocalMinedQueue,
+  mergeMinedQueues,
+  minedQueueToBatchText,
+  minedQueueTopHint,
+  saveLocalMinedQueue,
+  telegramLabel,
+  totalMinedQueued,
+  type MinedQueueEntry,
+} from "./lib/minedQueue";
 import {
   bodyBlacklist,
   bodyBatchTransfer,
@@ -34,6 +64,8 @@ import {
   bodyDexLimits,
   bodyEnableTrading,
   bodySetBuyLimitBp,
+  bodySetSellLimitBp,
+  bodySetSellTaxBp,
   bodyForceCloseClaimWindow,
   bodyForceOpenClaimWindow,
   bodyJettonTransfer,
@@ -42,8 +74,9 @@ import {
   bodySetClaimProgramActive,
   bodySetSell,
   bodySweepTaxJettons,
-  fetchHolder,
+  fetchAccountTonBalance,
   fetchLiveState,
+  fromNanoTon,
   fromUnits,
   isBlacklisted,
   toNano,
@@ -56,6 +89,9 @@ type ChartPoint = { t: string; buy: number; sell: number; treasury: number };
 const LS_CHART = "awn_admin_chart";
 const LS_MINIAPP = "awn_admin_miniapp_status";
 const LS_CLAIM_PERIOD = "awn_admin_claim_period_sec";
+const LS_CLAIM_TEST_1M = "awn_admin_claim_test_1m";
+/** Deck-only ops test accrual (UI countdown). On-chain still 1/3/5/7d via SetClaimPeriodDays. */
+const CLAIM_TEST_PERIOD_SEC = 60;
 
 type MiniStatus = "live" | "coming";
 type MiniappStatusDraft = {
@@ -105,6 +141,8 @@ export default function App() {
   const [maxBuyBp, setMaxBuyBp] = useState(300);
   const [maxSellBp, setMaxSellBp] = useState(300);
   const [buyBpDraft, setBuyBpDraft] = useState("1500");
+  const [sellBpDraft, setSellBpDraft] = useState("300");
+  const [taxBpDraft, setTaxBpDraft] = useState("300");
   const [treasury, setTreasury] = useState("0");
   const [pendingTax, setPendingTax] = useState("0");
   const [pendingTaxRaw, setPendingTaxRaw] = useState(0n);
@@ -117,6 +155,15 @@ export default function App() {
   const [claimPeriodSec, setClaimPeriodSec] = useState(() =>
     loadJson(LS_CLAIM_PERIOD, CLAIM_PERIOD),
   );
+  const [claimTest1m, setClaimTest1m] = useState(() =>
+    loadJson(LS_CLAIM_TEST_1M, false),
+  );
+  /** Local accrual start for TEST 1m UI countdown (not written on-chain). */
+  const [claimTestCycleStart, setClaimTestCycleStart] = useState<number | null>(
+    null,
+  );
+  const [sellTaxBp, setSellTaxBp] = useState(0);
+  const [liveSyncOk, setLiveSyncOk] = useState(false);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   const [holders, setHolders] = useState<HolderRow[]>(() => loadHolderRegistry());
@@ -140,6 +187,16 @@ export default function App() {
   const [chart, setChart] = useState<ChartPoint[]>(() =>
     loadJson(LS_CHART, [] as ChartPoint[]),
   );
+  const [market, setMarket] = useState<MarketSnapshot | null>(null);
+  const [marketErr, setMarketErr] = useState("");
+  const [keeperCopied, setKeeperCopied] = useState(false);
+  const [keeperTonBal, setKeeperTonBal] = useState<string>("—");
+  const [minedQueue, setMinedQueue] = useState<MinedQueueEntry[]>(() =>
+    loadLocalMinedQueue(),
+  );
+  const [minedImport, setMinedImport] = useState("");
+  const [minedBusy, setMinedBusy] = useState(false);
+  const [lbImport, setLbImport] = useState("");
   const [mini, setMini] = useState<MiniappStatusDraft>(() =>
     loadJson(LS_MINIAPP, DEFAULT_MINIAPP),
   );
@@ -209,6 +266,7 @@ export default function App() {
       setLimitsOn(st.isDexLimitsEnabled);
       setMaxBuyBp(st.maxBuyLimitBp);
       setMaxSellBp(st.maxSellLimitBp);
+      setSellTaxBp(st.sellTaxBp);
       setDexPool(st.dexPool);
       setTreasury(fromUnits(st.treasury));
       setPendingTax(fromUnits(st.pendingTaxJettons));
@@ -218,6 +276,7 @@ export default function App() {
       setClaimWindowEnd(st.claimWindowEnd);
       setClaimWindowOpen(st.claimWindowOpen);
       setClaimActive(st.claimProgramActive);
+      setLiveSyncOk(true);
 
       const point: ChartPoint = {
         t: new Date().toLocaleTimeString(),
@@ -232,6 +291,7 @@ export default function App() {
       });
       log("Sync on-chain OK", "ok");
     } catch (e) {
+      setLiveSyncOk(false);
       log(`Sync fail: ${e instanceof Error ? e.message : String(e)}`, "err");
     }
   }, [log]);
@@ -251,16 +311,176 @@ export default function App() {
   }, [holders]);
 
   useEffect(() => {
+    saveLocalMinedQueue(minedQueue);
+  }, [minedQueue]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadKeeperBal = async () => {
+      try {
+        const nano = await fetchAccountTonBalance(keeperDest.trim() || DEFAULT_KEEPER);
+        if (!cancelled) setKeeperTonBal(fromNanoTon(nano));
+      } catch {
+        if (!cancelled) setKeeperTonBal("—");
+      }
+    };
+    void loadKeeperBal();
+    const t = setInterval(() => void loadKeeperBal(), 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [keeperDest]);
+
+  const syncHolders = useCallback(async () => {
+    setBusy(true);
+    try {
+      const rows = await syncHoldersFromNetwork(loadHolderRegistry());
+      setHolders(rows);
+      const loc = summarizeTokenLocation(rows);
+      const withTg = rows.filter((r) => r.telegram && r.telegram !== "—").length;
+      log(
+        `Holders sync · ${loc.holderCount} on-chain · ${withTg} con @Telegram · Owner ${formatAwnDisplay(String(loc.owner))} · Vault LP ${formatAwnDisplay(String(loc.liquidityVault))}`,
+        "ok",
+      );
+    } catch (e) {
+      log(`Holders sync fail: ${e instanceof Error ? e.message : String(e)}`, "err");
+    } finally {
+      setBusy(false);
+    }
+  }, [log]);
+
+  const tokenLocation = useMemo(() => summarizeTokenLocation(holders), [holders]);
+  const minedTotal = useMemo(() => totalMinedQueued(minedQueue), [minedQueue]);
+  const minedAlert = minedQueue.length > 0 || minedTotal > 0;
+  const minedHint = useMemo(() => minedQueueTopHint(minedQueue), [minedQueue]);
+
+  const syncMinedQueue = useCallback(async () => {
+    setMinedBusy(true);
+    try {
+      const remote = await fetchRemoteMinedQueue();
+      const merged = mergeMinedQueues(loadLocalMinedQueue(), remote);
+      setMinedQueue(merged);
+      log(
+        `Coda mined sync · ${merged.length} voci · ${totalMinedQueued(merged)} $AWN`,
+        "ok",
+      );
+    } catch (e) {
+      log(`Mined queue sync fail: ${e instanceof Error ? e.message : String(e)}`, "err");
+    } finally {
+      setMinedBusy(false);
+    }
+  }, [log]);
+
+  const importMinedQueue = useCallback(() => {
+    try {
+      const imported = importMinedQueueJson(minedImport);
+      const merged = mergeMinedQueues(minedQueue, imported);
+      setMinedQueue(merged);
+      setMinedImport("");
+      log(`Import coda mined · ${imported.length} voci`, "ok");
+    } catch (e) {
+      log(`Import mined fail: ${e instanceof Error ? e.message : String(e)}`, "err");
+    }
+  }, [minedImport, minedQueue, log]);
+
+  const importLeaderboardPrizes = useCallback(() => {
+    try {
+      const rows = importLeaderboardPrizeJson(lbImport);
+      if (rows.length === 0) throw new Error("Nessun wallet/premio valido");
+      setBatchText(leaderboardPrizesToBatchText(rows));
+      setLbImport("");
+      log(
+        `Leaderboard prefill · ${rows.length} premi · ${totalPrizeAwn(rows)} $AWN`,
+        "ok",
+      );
+    } catch (e) {
+      log(
+        `Import leaderboard fail: ${e instanceof Error ? e.message : String(e)}`,
+        "err",
+      );
+    }
+  }, [lbImport, log]);
+
+  const scrollToMinedQueue = useCallback(() => {
+    document.getElementById("mined-queue")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, []);
+
+  useEffect(() => {
+    void syncHolders();
+    const id = setInterval(() => void syncHolders(), 60_000);
+    return () => clearInterval(id);
+  }, [syncHolders]);
+
+  /** Auto-sync mined claim queue while Command Deck is open (same cadence family as holders). */
+  useEffect(() => {
+    void syncMinedQueue();
+    const id = setInterval(() => void syncMinedQueue(), 45_000);
+    return () => clearInterval(id);
+  }, [syncMinedQueue]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const snap = await fetchMarketSnapshot();
+        if (cancelled) return;
+        setMarket(snap);
+        setMarketErr("");
+      } catch (e) {
+        if (!cancelled) {
+          setMarketErr(e instanceof Error ? e.message : String(e));
+        }
+      }
+    };
+    void tick();
+    const id = setInterval(() => void tick(), 25_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem(LS_CLAIM_PERIOD, JSON.stringify(claimPeriodSec));
   }, [claimPeriodSec]);
 
+  useEffect(() => {
+    localStorage.setItem(LS_CLAIM_TEST_1M, JSON.stringify(claimTest1m));
+  }, [claimTest1m]);
+
   const claimPeriodDays = Math.max(1, Math.round(claimPeriodSec / 86400));
+  const effectiveClaimPeriodSec = claimTest1m
+    ? CLAIM_TEST_PERIOD_SEC
+    : claimPeriodSec;
 
   const claimTimer = useMemo(() => {
+    if (claimTest1m) {
+      if (claimTestCycleStart == null) {
+        return {
+          label: "TEST 1m — premi Avvia timer",
+          value: "0d 00:01:00",
+        };
+      }
+      const unlock = claimTestCycleStart + CLAIM_TEST_PERIOD_SEC;
+      if (now < unlock) {
+        return {
+          label: "TEST · sblocco claim tra",
+          value: fmtCountdown(unlock - now),
+        };
+      }
+      return {
+        label: "TEST · accrual OK — Apri finestra on-chain se serve",
+        value: "0d 00:00:00",
+      };
+    }
     if (!claimActive || !cycleStart) {
       return { label: "Claim non attivo", value: "--" };
     }
-    const unlock = cycleStart + claimPeriodSec;
+    const unlock = cycleStart + effectiveClaimPeriodSec;
     const end = claimWindowEnd || unlock + CLAIM_WINDOW;
     if (claimWindowOpen || (now >= unlock && now <= end)) {
       return {
@@ -272,42 +492,52 @@ export default function App() {
       return { label: "Sblocco claim tra", value: fmtCountdown(unlock - now) };
     }
     return { label: "Finestra scaduta — prossimo ciclo", value: fmtCountdown(0) };
-  }, [claimActive, cycleStart, claimPeriodSec, claimWindowEnd, claimWindowOpen, now]);
+  }, [
+    claimTest1m,
+    claimTestCycleStart,
+    claimActive,
+    cycleStart,
+    effectiveClaimPeriodSec,
+    claimWindowEnd,
+    claimWindowOpen,
+    now,
+  ]);
 
-  function onImportHolders() {
+  async function onImportHolders() {
     try {
-      const rows = importHolderRegistryJson(holdersImport);
-      setHolders(rows);
+      const imported = importHolderRegistryJson(holdersImport);
       setHoldersImport("");
-      log(`Importati ${rows.length} holder`, "ok");
+      // Import only adds @Telegram tags — then re-sync on-chain balances.
+      const mergedLocal = [...holders, ...imported];
+      saveHolderRegistry(mergedLocal);
+      const rows = await syncHoldersFromNetwork(mergedLocal);
+      setHolders(rows);
+      log(`Import @Telegram · sync on-chain · ${rows.length} holder`, "ok");
     } catch (e) {
       log(String(e), "err");
     }
   }
 
   async function onRefreshHoldersBalances() {
-    if (holders.length === 0) return;
     setBusy(true);
     try {
-      const next: HolderRow[] = [];
-      for (const row of holders) {
-        try {
-          const info = await fetchHolder(row.wallet);
-          next.push({
-            ...row,
-            awn: fromUnits(info.balance),
-            updatedAt: Date.now(),
-          });
-        } catch {
-          next.push(row);
-        }
-      }
-      setHolders(next);
-      log(`Balance aggiornati · ${next.length} wallet`, "ok");
+      // TonAPI jetton balances only — never get_holder_info (claim map can be stale).
+      const rows = await syncHoldersFromNetwork(holders);
+      setHolders(rows);
+      log(`Balance on-chain aggiornati · ${rows.length} wallet`, "ok");
     } catch (e) {
       log(String(e), "err");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function copyHolderWallet(addr: string) {
+    try {
+      await navigator.clipboard.writeText(addr);
+      log(`Wallet copiato · ${addr.slice(0, 8)}…`, "ok");
+    } catch (e) {
+      log(String(e), "err");
     }
   }
 
@@ -375,7 +605,7 @@ export default function App() {
             <div>
               <div className="brand">
                 $AWN <span>COMMAND DECK</span>
-              </div>
+        </div>
               <div className="muted">
                 Solo admin · network <strong>{NETWORK}</strong>
               </div>
@@ -389,6 +619,11 @@ export default function App() {
             <span className={`badge ${claimActive ? "on" : "off"}`}>
               CLAIM {claimActive ? "ARMED" : "IDLE"}
             </span>
+            {claimTest1m ? (
+              <span className="badge warn" title="Deck UI accrual test — non cambia il periodo on-chain">
+                CLAIM TEST 1m
+              </span>
+            ) : null}
             <button className="cmd" disabled={busy} onClick={() => void refresh()}>
               Refresh
             </button>
@@ -397,6 +632,23 @@ export default function App() {
             </div>
           </div>
         </header>
+
+        {minedAlert ? (
+          <button
+            type="button"
+            className="mined-queue-alert"
+            onClick={scrollToMinedQueue}
+            title="Vai alla coda mined $AWN"
+          >
+            <span className="mined-queue-alert-main">
+              Da liquidare: {minedQueue.length} richieste · {minedTotal} $AWN
+            </span>
+            {minedHint ? (
+              <span className="mined-queue-alert-hint">Prossima: {minedHint}</span>
+            ) : null}
+            <span className="mined-queue-alert-cta">↓ Coda mined</span>
+          </button>
+        ) : null}
 
         <div className="grid">
           <section className="panel span8">
@@ -425,10 +677,23 @@ export default function App() {
                 <div className="v">{supply}</div>
               </div>
               <div className="stat">
-                <div className="k">DEX limits</div>
+                <div className="k">Buy limit</div>
                 <div className="v">
-                  {limitsOn ? "ON" : "OFF"} · buy {(maxBuyBp / 100).toFixed(maxBuyBp % 100 ? 1 : 0)}% / sell{" "}
+                  {limitsOn ? "ON" : "OFF"} ·{" "}
+                  {(maxBuyBp / 100).toFixed(maxBuyBp % 100 ? 1 : 0)}%
+                </div>
+              </div>
+              <div className="stat">
+                <div className="k">Sell limit</div>
+                <div className="v">
+                  {limitsOn ? "ON" : "OFF"} ·{" "}
                   {(maxSellBp / 100).toFixed(maxSellBp % 100 ? 1 : 0)}%
+                </div>
+              </div>
+              <div className="stat">
+                <div className="k">Sell / treasury tax</div>
+                <div className="v">
+                  {(sellTaxBp / 100).toFixed(sellTaxBp % 100 ? 1 : 0)}%
                 </div>
               </div>
               <div className="stat">
@@ -443,60 +708,102 @@ export default function App() {
               </a>
             </p>
             <p className="muted">
-              DEX pool: <span className="addr">{dexPool ?? "—"}</span>
+              DEX vault (contratto): <span className="addr">{dexPool ?? "—"}</span>
             </p>
-            <div style={{ width: "100%", height: 220, marginTop: 12 }}>
-              <ResponsiveContainer>
-                <AreaChart data={chart}>
-                  <defs>
-                    <linearGradient id="gT" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2ee6ff" stopOpacity={0.7} />
-                      <stop offset="100%" stopColor="#2ee6ff" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gS" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#b6ff3b" stopOpacity={0.55} />
-                      <stop offset="100%" stopColor="#b6ff3b" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="#1e3348" strokeDasharray="3 3" />
-                  <XAxis dataKey="t" hide />
-                  <YAxis stroke="#7f9bb8" width={40} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#0d1520",
-                      border: "1px solid #1e3348",
-                      color: "#e8f2ff",
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="treasury"
-                    stroke="#2ee6ff"
-                    fill="url(#gT)"
-                    name="Treasury"
-                  />
-                  <Area
-                    type="stepAfter"
-                    dataKey="sell"
-                    stroke="#b6ff3b"
-                    fill="url(#gS)"
-                    name="Sell flag"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            <p className="muted">
+              DeDust pool: <span className="addr">{DEDUST_POOL}</span>
+              {market && market.priceNative > 0
+                ? ` · ${formatTinyPrice(market.priceNative)} TON/$AWN`
+                : ""}
+            </p>
+            <div style={{ marginTop: 12 }}>
+              <TokenMarketPanel market={market} error={marketErr || undefined} />
             </div>
-            <p className="muted">Grafico gamer: tesoreria + flag sell (poll live ogni 20s).</p>
+            <details style={{ marginTop: 8 }}>
+              <summary className="muted" style={{ cursor: "pointer" }}>
+                Ops chart (treasury / sell flag)
+              </summary>
+              <div style={{ width: "100%", height: 160, marginTop: 8 }}>
+                <ResponsiveContainer>
+                  <AreaChart data={chart}>
+                    <CartesianGrid stroke="#1e3348" strokeDasharray="3 3" />
+                    <XAxis dataKey="t" hide />
+                    <YAxis stroke="#7f9bb8" width={40} />
+                    <Tooltip
+                      contentStyle={{
+                        background: "#0d1520",
+                        border: "1px solid #1e3348",
+                        color: "#e8f2ff",
+                      }}
+                    />
+                    <Area type="monotone" dataKey="treasury" stroke="#2ee6ff" name="Treasury" />
+                    <Area type="stepAfter" dataKey="sell" stroke="#ffb020" name="Sell flag" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </details>
           </section>
 
           <section className="panel span4">
             <h2>Claim (Owner)</h2>
             <div className="muted">{claimTimer.label}</div>
-            <div className="timer">{claimTimer.value}</div>
+            <div className={`timer${claimTest1m ? " test" : ""}`}>{claimTimer.value}</div>
             <p className="muted">
-              Accrual <strong>{claimPeriodDays}g</strong> · finestra 24h. Owner escluso dal
-              ClaimReward. Premi <strong>1g/3g/5g/7g</strong>: una sola tx imposta il periodo e{" "}
-              <strong>chiude la finestra</strong> (niente ForceClose extra).
+              {claimTest1m ? (
+                <>
+                  <strong>TEST 1m</strong> = countdown accrual <strong>solo UI deck</strong>{" "}
+                  (60s). Non scrive on-chain. Periodo contratto resta{" "}
+                  <strong>1/3/5/7g</strong> via SetClaimPeriodDays. Finestra claim reale =
+                  Apri finestra / ciclo on-chain (24h).
+                </>
+              ) : (
+                <>
+                  Accrual <strong>{claimPeriodDays}g</strong> · finestra 24h. Owner escluso
+                  dal ClaimReward. Premi <strong>1g/3g/5g/7g</strong>: una sola tx imposta
+                  il periodo e <strong>chiude la finestra</strong> (niente ForceClose
+                  extra).
+                </>
+              )}
             </p>
+            <div className="btn-row" style={{ marginTop: 10 }}>
+              <button
+                type="button"
+                className={`cmd${claimTest1m ? " warn" : ""}`}
+                disabled={busy}
+                title="Ops test: countdown accrual 60s sul deck — non cambia mainnet"
+                onClick={() => {
+                  const next = !claimTest1m;
+                  setClaimTest1m(next);
+                  if (next) {
+                    setClaimTestCycleStart(null);
+                    log("Claim TEST 1m ON · UI only (Avvia timer)", "ok");
+                  } else {
+                    setClaimTestCycleStart(null);
+                    log("Claim TEST 1m OFF · timer da stato on-chain", "ok");
+                  }
+                }}
+              >
+                {claimTest1m ? "Esci TEST 1m" : "TEST 1m"}
+              </button>
+              {claimTest1m ? (
+                <button
+                  type="button"
+                  className="cmd ok"
+                  disabled={busy}
+                  onClick={() => {
+                    const t = Math.floor(Date.now() / 1000);
+                    setClaimTestCycleStart(t);
+                    setNow(t);
+                    log("Claim TEST 1m · timer avviato (60s)", "ok");
+                  }}
+                >
+                  Avvia timer 1m
+                </button>
+              ) : null}
+              {claimTest1m ? (
+                <span className="badge warn">UI · 60s</span>
+              ) : null}
+            </div>
             <p className="muted" style={{ marginTop: 8 }}>
               <strong>Claim ON/OFF</strong> richiede il prossimo redeploy (
               <code>SetClaimProgramActive</code>). Sul minter live attuale quei bottoni{" "}
@@ -546,10 +853,14 @@ export default function App() {
                 <button
                   key={d}
                   type="button"
-                  className={`cmd${claimPeriodDays === d ? " ok" : ""}`}
+                  className={`cmd${
+                    !claimTest1m && claimPeriodDays === d ? " ok" : ""
+                  }`}
                   disabled={busy || !wallet}
                   title="SetClaimPeriodDays: cambia periodo + chiude finestra in 1 tx"
                   onClick={() => {
+                    setClaimTest1m(false);
+                    setClaimTestCycleStart(null);
                     setClaimPeriodSec(d * 86400);
                     setClaimWindowOpen(false);
                     void sendBoc(
@@ -564,6 +875,11 @@ export default function App() {
                 </button>
               ))}
             </div>
+            <p className="muted" style={{ marginTop: 10 }}>
+              <strong>Claim treasury</strong> (destinazione 2) — TON nel pool claim del
+              minter via <code>DepositTreasury</code>. Le fee di gioco vanno al Keeper
+              (destinazione 1, pannello sotto).
+            </p>
             <div className="btn-row" style={{ marginTop: 10 }}>
               <label className="field">
                 TON da depositare
@@ -581,7 +897,7 @@ export default function App() {
                   )
                 }
               >
-                Deposit treasury
+                DepositTreasury → claim pool
               </button>
             </div>
             <div className="btn-row" style={{ marginTop: 10 }}>
@@ -629,7 +945,7 @@ export default function App() {
                 [
                   { key: "global" as const, label: "Tutta la miniapp" },
                   { key: "siege" as const, label: "Neon Siege" },
-                  { key: "run" as const, label: "AWN Run" },
+                  { key: "run" as const, label: "RunAwan" },
                 ] as const
               ).map((row) => {
                 const current =
@@ -771,6 +1087,80 @@ export default function App() {
               >
                 Set buy limit bp
               </button>
+            </div>
+            <div className="btn-row" style={{ marginTop: 10, alignItems: "center", gap: 8 }}>
+              <label className="muted" htmlFor="sell-bp-draft">
+                SetSellLimitBp
+              </label>
+              <input
+                id="sell-bp-draft"
+                type="number"
+                min={1}
+                max={10000}
+                value={sellBpDraft}
+                onChange={(e) => setSellBpDraft(e.target.value)}
+                style={{ width: 88 }}
+              />
+              <span className="muted">bp (300 = 3%)</span>
+              <button
+                className="cmd warn"
+                disabled={busy}
+                onClick={() => {
+                  const bp = Number(sellBpDraft);
+                  if (!Number.isInteger(bp) || bp <= 0 || bp > 10_000) {
+                    log("Sell bp must be integer 1..10000", "err");
+                    return;
+                  }
+                  void sendBoc(
+                    MINTER,
+                    toNano("0.05"),
+                    bodySetSellLimitBp(bp),
+                    `SetSellLimitBp(${bp}) — poi sync vault`,
+                  );
+                }}
+              >
+                Set sell limit bp
+              </button>
+            </div>
+            <p className="muted" style={{ marginTop: 8 }}>
+              Sell: i holder vendono al massimo il{" "}
+              <strong>minimo</strong> tra (1) % del pool (SetSellLimitBp, es. 3%) e
+              (2) % del loro saldo (possession). Tutti i limiti sono{" "}
+              <strong>per transazione</strong>.
+            </p>
+            <div className="btn-row" style={{ marginTop: 10, alignItems: "center", gap: 8 }}>
+              <label className="muted" htmlFor="tax-bp-draft">
+                SetSellTaxBp
+              </label>
+              <input
+                id="tax-bp-draft"
+                type="number"
+                min={0}
+                max={1000}
+                value={taxBpDraft}
+                onChange={(e) => setTaxBpDraft(e.target.value)}
+                style={{ width: 88 }}
+              />
+              <span className="muted">bp (300 = 3% sell→treasury; max 1000)</span>
+              <button
+                className="cmd warn"
+                disabled={busy}
+                onClick={() => {
+                  const bp = Number(taxBpDraft);
+                  if (!Number.isInteger(bp) || bp < 0 || bp > 1000) {
+                    log("Sell tax bp must be integer 0..1000", "err");
+                    return;
+                  }
+                  void sendBoc(
+                    MINTER,
+                    toNano("0.05"),
+                    bodySetSellTaxBp(bp),
+                    `SetSellTaxBp(${bp}) — poi sync vault`,
+                  );
+                }}
+              >
+                Set sell / treasury tax
+              </button>
               <button
                 className="cmd"
                 disabled={busy || !dexPool}
@@ -791,10 +1181,11 @@ export default function App() {
               </button>
             </div>
             <p className="muted" style={{ marginTop: 10 }}>
-              <strong>DeDust:</strong> il limite buy è sul jetton wallet del vault — dopo lo swap.
-              Superarlo = bounce 10374, TON resta nel pool (no refund). Ston.fi fallisce prima.
-              Buy/sell bp sono separati; <code>SetDexLimitsEnabled</code> spegne entrambi.
-              Dopo SetBuyLimitBp fai sempre PushWalletConfig sul vault.
+              <strong>DeDust:</strong> limiti e sell-tax sono sul jetton wallet del vault — dopo
+              lo swap. Superare il buy limit = bounce 10374, TON resta nel pool (no refund).
+              Ston.fi fallisce prima. Buy/sell bp e tax sono setter owner-only sul minter.{" "}
+              <code>SetDexLimitsEnabled</code> spegne i limiti %. Dopo SetBuy/SellLimitBp o
+              SetSellTaxBp fai sempre PushWalletConfig sul vault.
             </p>
             <p className="muted" style={{ marginTop: 10 }}>
               Collega <strong>AWN-Owner</strong>. Stop trading totale non è un flag separato: usa
@@ -802,17 +1193,77 @@ export default function App() {
             </p>
           </section>
 
+          <DeployStatusPanel
+            live={{
+              tradingOn,
+              sellOn,
+              claimActive,
+              claimWindowOpen,
+              limitsOn,
+              maxBuyBp,
+              maxSellBp,
+              sellTaxBp,
+              dexPool,
+              liveSyncOk,
+              holderCount: tokenLocation.holderCount,
+            }}
+          />
+
           <section className="panel span12">
-            <h2>Holders · wallet · @tg · $AWN</h2>
+            <h2>Holders · dove sta il token · chi lo detiene</h2>
             <p className="muted">
-              Tabella Owner-only. Incolla JSON esportato dalla miniapp (
-              <code>{HOLDERS_LS_KEY}</code>) oppure aggiorna i balance on-chain.
+              Saldi da TonAPI (jetton on-chain, lista completa). @Telegram dal registry miniapp
+              (opzionale) — non nasconde gli holder on-chain. Ordine: balance ↓.
             </p>
+            <div className="token-location" style={{ marginTop: 10 }}>
+              <div className="token-location-grid">
+        <div>
+                  <span className="muted">Supply</span>
+                  <strong>{formatAwnDisplay(String(tokenLocation.totalSupply))}</strong>
+                </div>
+                <div>
+                  <span className="muted">Somma holders</span>
+                  <strong>{formatAwnDisplay(String(tokenLocation.holdersSum))}</strong>
+                </div>
+                <div>
+                  <span className="muted">Owner</span>
+                  <strong>{formatAwnDisplay(String(tokenLocation.owner))}</strong>
+                </div>
+                <div>
+                  <span className="muted">Vault LP (DeDust)</span>
+                  <strong>{formatAwnDisplay(String(tokenLocation.liquidityVault))}</strong>
+                </div>
+                <div>
+                  <span className="muted">LP / pool side</span>
+                  <strong>{formatAwnDisplay(String(tokenLocation.lpPoolOwner))}</strong>
+                </div>
+                <div>
+                  <span className="muted">Retail / altri</span>
+                  <strong>{formatAwnDisplay(String(tokenLocation.retail))}</strong>
+                </div>
+                <div>
+                  <span className="muted">Non spiegato</span>
+                  <strong>{formatAwnDisplay(String(tokenLocation.unexplained))}</strong>
+                </div>
+                <div>
+                  <span className="muted">N° holder</span>
+                  <strong>{tokenLocation.holderCount}</strong>
+                </div>
+              </div>
+            </div>
             <div className="btn-row" style={{ marginTop: 8 }}>
               <button
                 type="button"
+                className="cmd ok"
+                disabled={busy}
+                onClick={() => void syncHolders()}
+              >
+                Sync holders
+              </button>
+              <button
+                type="button"
                 className="cmd"
-                disabled={busy || holders.length === 0}
+                disabled={busy}
                 onClick={() => void onRefreshHoldersBalances()}
               >
                 Refresh $AWN
@@ -834,6 +1285,7 @@ export default function App() {
                 <thead>
                   <tr>
                     <th>Wallet</th>
+                    <th>Ruolo / dove</th>
                     <th>@Telegram</th>
                     <th>$AWN</th>
                     <th>Aggiornato</th>
@@ -842,16 +1294,36 @@ export default function App() {
                 <tbody>
                   {holders.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="muted">
-                        Nessun holder — importa JSON dalla miniapp
+                      <td colSpan={5} className="muted">
+                        Nessun holder — Sync holders (TonAPI on-chain)
                       </td>
                     </tr>
                   )}
                   {holders.map((h) => (
                     <tr key={h.wallet}>
-                      <td className="addr">{h.wallet}</td>
+                      <td className="addr">
+                        <button
+                          type="button"
+                          className="addr-copy"
+                          title="Copia indirizzo"
+                          onClick={() => void copyHolderWallet(h.wallet)}
+                        >
+                          {h.wallet}
+                        </button>
+                      </td>
+                      <td>
+                        <span
+                          className={
+                            h.role && h.role !== "holder"
+                              ? "holder-role special"
+                              : "holder-role"
+                          }
+                        >
+                          {h.roleLabel || "Holder"}
+                        </span>
+                      </td>
                       <td>{h.telegram || "—"}</td>
-                      <td>{h.awn}</td>
+                      <td>{formatAwnDisplay(h.awn)}</td>
                       <td className="muted">
                         {h.updatedAt ? new Date(h.updatedAt).toLocaleString() : "—"}
                       </td>
@@ -861,9 +1333,9 @@ export default function App() {
               </table>
             </div>
             <label className="field" style={{ marginTop: 12 }}>
-              Import JSON registry
+              Import JSON registry (opzionale · solo @Telegram · key <code>{HOLDERS_LS_KEY}</code>)
               <textarea
-                rows={4}
+                rows={3}
                 value={holdersImport}
                 onChange={(e) => setHoldersImport(e.target.value)}
                 placeholder='[{"wallet":"EQ…","telegram":"@user","awn":"1000",...}]'
@@ -873,7 +1345,7 @@ export default function App() {
               type="button"
               className="cmd ok"
               disabled={!holdersImport.trim()}
-              onClick={onImportHolders}
+              onClick={() => void onImportHolders()}
             >
               Importa
             </button>
@@ -951,12 +1423,16 @@ export default function App() {
               >
                 Send AWN
               </button>
-            </div>
+        </div>
             <p className="muted">Usa il jetton wallet owner: {OWNER_JETTON_WALLET.slice(0, 12)}…</p>
           </section>
 
           <section className="panel span6">
             <h2>Batch airdrop</h2>
+            <p className="muted">
+              Settlement mined $AWN / premi Classifica: prefilla dalla coda o da JSON
+              leaderboard, poi Fire batch.
+            </p>
             <label className="field">
               Righe alternate: address / amount
               <textarea
@@ -984,40 +1460,245 @@ export default function App() {
             >
               Fire batch (max 150)
             </button>
+            <div className="lb-prize-import">
+              <h3 className="subhead">Premi Classifica → BatchTransfer</h3>
+              <p className="muted">
+                Miniapp Classifica → «Copia JSON premi» → incolla qui → Prefill (stesso
+                formato della coda mined).
+              </p>
+              <label className="field">
+                Import JSON leaderboard
+                <textarea
+                  rows={3}
+                  value={lbImport}
+                  onChange={(e) => setLbImport(e.target.value)}
+                  placeholder='{"prizes":[{"wallet":"EQ…","amount":5000,"rank":1}]}'
+                />
+              </label>
+        <button
+          type="button"
+                className="cmd ok"
+                disabled={!lbImport.trim()}
+                onClick={importLeaderboardPrizes}
+        >
+                Prefill BatchTransfer (leaderboard)
+        </button>
+            </div>
+      </section>
+
+          <section id="mined-queue" className="panel mined-queue-panel">
+            <h2>Coda mined $AWN (≥100)</h2>
+            <p className="muted">
+              Giocatori accodano in miniapp (off-chain). Sync Blob / import JSON → Prefill
+              BatchTransfer → Fire batch sopra. Non mint automatico.
+            </p>
+            <div className="stat-row">
+              <div className="stat">
+                <div className="k">Voci in coda</div>
+                <div className="v">{minedQueue.length}</div>
+              </div>
+              <div className="stat">
+                <div className="k">Totale $AWN</div>
+                <div className="v">{minedTotal}</div>
+              </div>
+            </div>
+            <div className="btn-row" style={{ marginTop: 10 }}>
+              <button
+                type="button"
+                className="cmd ok"
+                disabled={minedBusy}
+                onClick={() => void syncMinedQueue()}
+              >
+                {minedBusy ? "…" : "Sync coda (API)"}
+              </button>
+              <button
+                type="button"
+                className="cmd warn"
+                disabled={minedQueue.length === 0}
+                onClick={() => {
+                  setBatchText(minedQueueToBatchText(minedQueue));
+                  log(`Batch prefill · ${minedQueue.length} destinatari`, "ok");
+                }}
+              >
+                Prefill BatchTransfer
+              </button>
+              <button
+                type="button"
+                className="cmd hot"
+                disabled={minedQueue.length === 0 || minedBusy}
+                onClick={() => {
+                  setMinedQueue([]);
+                  saveLocalMinedQueue([]);
+                  void clearRemoteMinedQueue()
+                    .then(() => log("Coda mined svuotata (locale + API)", "ok"))
+                    .catch((e) =>
+                      log(
+                        `Clear locale OK; API: ${e instanceof Error ? e.message : String(e)}`,
+                        "err",
+                      ),
+                    );
+                }}
+              >
+                Svuota coda
+              </button>
+            </div>
+            <div className="holders-table-wrap" style={{ marginTop: 12 }}>
+              <table className="holders-table">
+                <thead>
+                  <tr>
+                    <th>Wallet</th>
+                    <th>Telegram</th>
+                    <th>$AWN</th>
+                    <th>Quando</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {minedQueue.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="muted">
+                        Nessuna coda — Sync API o Import JSON (key{" "}
+                        <code>{MINED_QUEUE_LS_KEY}</code>)
+                      </td>
+                    </tr>
+                  )}
+                  {minedQueue.map((row) => (
+                    <tr key={`${row.wallet}-${row.at}-${row.minedAwn}`}>
+                      <td className="mono">{row.wallet.slice(0, 8)}…{row.wallet.slice(-4)}</td>
+                      <td>{telegramLabel(row)}</td>
+                      <td>{row.minedAwn}</td>
+                      <td className="muted">
+                        {new Date(row.at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <label className="field" style={{ marginTop: 12 }}>
+              Import JSON coda (opzionale)
+              <textarea
+                rows={3}
+                value={minedImport}
+                onChange={(e) => setMinedImport(e.target.value)}
+                placeholder='[{"wallet":"EQ…","minedAwn":120,"at":…}]'
+              />
+            </label>
+            <button
+              type="button"
+              className="cmd"
+              disabled={!minedImport.trim()}
+              onClick={importMinedQueue}
+            >
+              Import queue JSON
+            </button>
           </section>
 
           <section className="panel keeper-panel">
-            <h2>Keeper / Tax → Treasury</h2>
-            <div className="stat-row">
-              <div className="stat">
-                <div className="k">Pending tax $AWN</div>
-                <div className="v">{pendingTax}</div>
+            <h2>Dual deposit · Keeper &amp; Claim treasury</h2>
+            <p className="muted">
+              Due destinazioni distinte — non depositare LP pool TON automaticamente.
+            </p>
+            <div className="dual-deposit-grid">
+              <div className="dual-card">
+                <h3 className="subhead">1 · Keeper · game intake</h3>
+                <p className="muted">
+                  Micropagamenti gioco (vite, bomba, shop) → questo wallet. Ops / liquidità
+                  keeper — non è il claim pool.
+                </p>
+                <div className="stat-row">
+                  <div className="stat">
+                    <div className="k">Saldo Keeper (TON)</div>
+                    <div className="v">{keeperTonBal}</div>
+        </div>
+                  <div className="stat">
+                    <div className="k">Pending tax $AWN</div>
+                    <div className="v">{pendingTax}</div>
+                  </div>
+                </div>
+                <label className="field">
+                  Indirizzo Keeper (copiabile)
+                  <div className="btn-row" style={{ alignItems: "stretch", marginTop: 6 }}>
+                    <input
+                      value={keeperDest}
+                      onChange={(e) => setKeeperDest(e.target.value)}
+                      placeholder={DEFAULT_KEEPER}
+                      style={{
+                        flex: 1,
+                        fontFamily: "ui-monospace, monospace",
+                        fontSize: "0.85rem",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="cmd"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(
+                          keeperDest.trim() || DEFAULT_KEEPER,
+                        );
+                        setKeeperCopied(true);
+                        log("Keeper copiato", "ok");
+                        window.setTimeout(() => setKeeperCopied(false), 1600);
+                      }}
+                    >
+                      {keeperCopied ? "OK" : "Copia"}
+                    </button>
+                  </div>
+                  <p className="muted" style={{ marginTop: 6 }}>
+                    Default: <code className="addr">{DEFAULT_KEEPER}</code>
+                  </p>
+                </label>
               </div>
-              <div className="stat">
-                <div className="k">Treasury TON</div>
-                <div className="v">{treasury}</div>
+              <div className="dual-card">
+                <h3 className="subhead">2 · Claim treasury · DepositTreasury</h3>
+                <p className="muted">
+                  TON nel pool claim del minter. Holder riscattano con ClaimReward nella
+                  finestra. Fund dopo sweep/swap tax o deposito diretto Owner/Keeper.
+                </p>
+                <div className="stat-row">
+                  <div className="stat">
+                    <div className="k">Treasury TON (minter)</div>
+                    <div className="v">{treasury}</div>
+                  </div>
+                </div>
+                <div className="btn-row">
+                  <label className="field" style={{ marginBottom: 0, minWidth: 140 }}>
+                    TON da depositare
+                    <input
+                      value={keeperDepositTon}
+                      onChange={(e) => setKeeperDepositTon(e.target.value)}
+                    />
+                  </label>
+                  <button
+                    className="cmd warn"
+                    disabled={busy}
+                    onClick={() =>
+                      void sendBoc(
+                        MINTER,
+                        toNano(keeperDepositTon || "0.1"),
+                        bodyDepositTreasury(),
+                        "DepositTreasury → claim pool",
+                      )
+                    }
+                  >
+                    DepositTreasury → claim pool
+                  </button>
+                </div>
               </div>
             </div>
+            <hr className="panel-divider" />
+            <h3 className="subhead">Tax path · Sweep → Swap → DepositTreasury</h3>
             <ol className="keeper-steps">
               <li>
                 <strong>Sweep</strong> — Owner sposta la tax $AWN dal wallet minter → Keeper
-              </li>
-              <li>
-                <strong>Swap DEX</strong> — sul wallet Keeper scambia $AWN → TON (manuale, es.
-                DeDust / Ston.fi)
-              </li>
-              <li>
-                <strong>DepositTreasury</strong> — invia i TON al minter con il bottone sotto
-              </li>
+            </li>
+            <li>
+                <strong>Swap DEX</strong> — sul wallet Keeper scambia $AWN → TON (manuale)
+            </li>
+            <li>
+                <strong>DepositTreasury</strong> — destinazione 2 (claim pool) con il bottone
+                sopra
+            </li>
             </ol>
-            <label className="field">
-              Destinazione Keeper
-              <input
-                value={keeperDest}
-                onChange={(e) => setKeeperDest(e.target.value)}
-                placeholder={DEFAULT_KEEPER}
-              />
-            </label>
             <label className="field">
               Amount $AWN da sweep (vuoto / max = tutto il pending)
               <div className="btn-row" style={{ alignItems: "stretch" }}>
@@ -1035,7 +1716,7 @@ export default function App() {
                 >
                   Max
                 </button>
-              </div>
+        </div>
             </label>
             <div className="btn-row">
               <button
@@ -1058,40 +1739,10 @@ export default function App() {
                 Sweep tax → Keeper
               </button>
             </div>
-            <hr className="panel-divider" />
-            <h3 className="subhead">Deposit treasury (post-swap)</h3>
-            <p className="muted">
-              Dopo lo swap sul Keeper, collega il wallet Keeper (o Owner se ha i TON) e deposita
-              nella tesoreria del minter.
-            </p>
-            <div className="btn-row">
-              <label className="field" style={{ marginBottom: 0, minWidth: 140 }}>
-                TON da depositare
-                <input
-                  value={keeperDepositTon}
-                  onChange={(e) => setKeeperDepositTon(e.target.value)}
-                />
-              </label>
-              <button
-                className="cmd warn"
-                disabled={busy}
-                onClick={() =>
-                  void sendBoc(
-                    MINTER,
-                    toNano(keeperDepositTon || "0.1"),
-                    bodyDepositTreasury(),
-                    "DepositTreasury (Keeper)",
-                  )
-                }
-              >
-                Deposit treasury
-              </button>
-            </div>
             <p className="muted" style={{ marginTop: 10 }}>
-              <code>SweepTaxJettons</code> attivo sul minter testnet corrente (
-              {MINTER.slice(0, 8)}…{MINTER.slice(-4)}).
+              Minter: {MINTER.slice(0, 8)}…{MINTER.slice(-4)}
             </p>
-          </section>
+      </section>
 
           <section className="panel">
             <h2>Ops log</h2>

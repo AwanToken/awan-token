@@ -231,6 +231,7 @@ export function ClaimScreen() {
       </div>
 
       <p className="holder-hint">{holderHint}</p>
+      <p className="hint dual-flows-note">{t.claim.dualFlowsHint}</p>
       {err && <p className="err">{err}</p>}
 
       <div className="row-actions">

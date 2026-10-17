@@ -1,5 +1,5 @@
 {
-  "url": "https://awn-miniapp-vercel.vercel.app",
+  "url": "http://localhost:5179",
   "name": "$AWN Mini App",
-  "iconUrl": "https://awn-miniapp-vercel.vercel.app/awn-logo.png"
+  "iconUrl": "http://localhost:5179/awn-logo.png"
 }

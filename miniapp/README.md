@@ -56,7 +56,7 @@ Shop items send plain TON to `VITE_TREASURY_OR_KEEPER`. Owned upgrades are store
 
 Scores: Top 20 in `localStorage` (+ in-memory session mirror).
 
-**Prize $AWN events** are not paid by this Mini App. After a tournament window, export top wallets and use **Command Deck** (`admin/`) **BatchTransfer** to airdrop prizes. Stub note is shown on the Ranks screen.
+**Prize $AWN events** are not paid by this Mini App. After a tournament window: Classifica → **Copia JSON premi** → Command Deck → **Import leaderboard** → **Prefill BatchTransfer** → Fire batch.
 
 ## What works vs stubs
 

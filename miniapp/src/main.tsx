@@ -9,8 +9,31 @@ import "./index.css";
 
 initTelegram();
 
-/** Live origin — works on localhost, LAN IP, ngrok, and Telegram WebView hosts. */
-const manifestUrl = `${window.location.origin}/tonconnect-manifest.json`;
+/**
+ * TonConnect wallets (Keeper, etc.) need a public HTTPS manifest.
+ * Localhost / http previews cannot complete the handshake — use production manifest
+ * and open the live Telegram Mini App / Vercel URL to connect.
+ */
+const PROD_ORIGIN = "https://awn-miniapp-vercel.vercel.app";
+const pageOrigin = window.location.origin;
+const isLocalHttp =
+  pageOrigin.startsWith("http://localhost") ||
+  pageOrigin.startsWith("http://127.") ||
+  pageOrigin.startsWith("http://192.168.") ||
+  pageOrigin.startsWith("http://10.");
+const manifestUrl = isLocalHttp
+  ? `${PROD_ORIGIN}/tonconnect-manifest.json`
+  : `${pageOrigin}/tonconnect-manifest.json`;
+
+/** Prefer Telegram Mini App deep-link return when available. */
+const tg = window.Telegram?.WebApp;
+const twaReturnUrl = (
+  isLocalHttp
+    ? PROD_ORIGIN
+    : (tg as { initDataUnsafe?: unknown } | undefined)?.initDataUnsafe
+      ? window.location.href
+      : pageOrigin
+) as `${string}://${string}`;
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -18,7 +41,7 @@ createRoot(document.getElementById("root")!).render(
       manifestUrl={manifestUrl}
       actionsConfiguration={{
         returnStrategy: "back",
-        twaReturnUrl: window.location.href as `${string}://${string}`,
+        twaReturnUrl,
       }}
     >
       <I18nProvider>

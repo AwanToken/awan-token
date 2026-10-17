@@ -7,7 +7,7 @@
  * - Normal users: 1 Telegram id → 1 wallet (first bind wins).
  * - Owner only: same Telegram username/id may register multiple wallets.
  */
-import { TOKEN_OWNER } from "../config";
+import { HOLDERS_API_URL, TOKEN_OWNER } from "../config";
 import { formatTelegramHandle, getTelegramUser, toTelegramIdentity } from "./telegram";
 import { fetchHolder, fromUnits, normalizeAddress, toFriendlyAddress } from "./ton";
 
@@ -103,17 +103,16 @@ export async function registerMiniappHolder(wallet: string | null): Promise<Hold
   next.unshift(row);
   saveAll(next);
 
-  const endpoint = import.meta.env.VITE_HOLDERS_ENDPOINT as string | undefined;
-  if (endpoint) {
-    try {
-      void fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(row),
-      });
-    } catch {
-      /* optional beacon */
-    }
+  // Sync to shared Vercel Blob registry so Command Deck can show @username.
+  try {
+    void fetch(HOLDERS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(row),
+      keepalive: true,
+    });
+  } catch {
+    /* network optional — local registry still saved */
   }
 
   return row;
